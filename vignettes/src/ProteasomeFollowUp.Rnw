@@ -1,0 +1,302 @@
+%\VignetteIndexEntry{Follow-up Proteasome inhibition assay}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(PGPC)
+
+raw_fig.cap = "Raw plate reader values for the different drugs and assays. CellTiterGlo (CTG), chymotrypsin-like (CT-L), trypsin-like (T-L), and caspase-like (C-L) activity assay."
+raw_fig.subcap = c("Untransformed values.", "log10 transformed values.")
+
+viab_fig.cap = "Viability normalized values for the different drugs and assays. CellTiterGlo (CTG), chymotrypsin-like (CT-L), trypsin-like (T-L), and caspase-like (C-L) activity assay."
+viab_fig.subcap = c("Untransformed values.", "log10 transformed values.")
+
+prot_fig.cap = "Viability and proteasome activity normalized values for the different drugs and assays. CellTiterGlo (CTG), chymotrypsin-like (CT-L), trypsin-like (T-L), and caspase-like (C-L) activity assay."
+prot_fig.subcap = c("Untransformed values.", "log10 transformed values.")
+
+sum_fig.cap = "Summary of viability and proteasome activity normalized values for the different drugs and assays. CellTiterGlo (CTG), chymotrypsin-like (CT-L), trypsin-like (T-L), and caspase-like (C-L) activity assay. Error bars, means +- s.e.m."
+sum_fig.subcap = c("Untransformed values. This figure is the basis of Figure 6 (b) in the paper.
+", "log10 transformed values.")
+
+fw = 10
+fh = 6
+@
+
+\section{Follow-up: Proteasome inhibition assay}
+
+Here we analyse the effect of drugs on the proteasome activity. The
+CellTiter-Glo assay is used to normalize for the viability effects of the drugs.
+DMSO is used as control for 100 \% proteasome activity.
+
+\subsubsection{Data processing and quality control}
+
+First we read the data from the different plates.
+<<readData, dependson = c(-1), fig.show="hold", fig.cap=raw_fig.cap, fig.subcap=raw_fig.subcap, fig.width=fw, fig.height=fh>>=
+readData <- function(path, files, log10Transform=TRUE){
+  do.call(rbind, lapply(files, function(file){
+    tmp <- read.delim(file.path(path, file))
+    tmp$plate = match(file, files)
+    tmp$plateName = file
+    if(log10Transform) tmp$log10Value = log10(tmp$value)
+    tmp
+  }))
+}
+
+path=system.file("extdata", "Proteasome_assays_follow-up",
+                 package="PGPC")
+files = list.files(path)
+
+data = readData(path,files)
+head(data)
+
+## remove BTO-1 drug
+data <- subset(data, drug != "BTO-1")
+
+data$assay = factor(data$assay,
+                    levels=c("CTG", "Chym","Tryp", "CASP"), 
+                    ordered=TRUE)
+levels(data$assay) = c("CTG", "CT-L","T-L", "C-L")
+data$drug = factor(data$drug, 
+                   levels=c("DMSO", "Disulfiram", "ZPCK", "AG555", "CAPE",  
+                            "MG132","Bortezomib 5", "AG1478", "DAPH"), 
+                   ordered=TRUE)
+
+cbpalette = c("black", "#ee1e39", "#e51d3a", "#bb1f3b", 
+              "#b21e42", "#d1d2d2", "#9b9b9b", "#3c53a4", "#4a52a3")
+
+ggplot(data, aes(x=drug, y=value, color=drug, shape=plateName)) + 
+  geom_jitter(position = position_jitter(width = .3), size=2.5) + 
+  theme_bw() + 
+  scale_color_manual(values=cbpalette) + 
+  facet_grid(assay ~ ., scales="free_y") 
+
+
+ggplot(data, aes(x=drug, y=log10Value, color=drug, shape=plateName)) + 
+  geom_jitter(position = position_jitter(width = .3), size=2.5) + 
+  theme_bw() + 
+  scale_color_manual(values=cbpalette) + 
+  facet_grid(assay ~ ., scales="free_y")
+@
+
+We alculate the mean values per plate for the two wells of each drug assay
+combination.
+<<plateMeanValues>>=
+mergeWells <- function(data){
+  for(plate in unique(data$plate)){
+    pp = data$plate == plate
+    for(drug in unique(data$drug)){
+      ii = data$drug == drug
+      for (assay in unique(data$assay)){      
+        jj = data$assay == assay
+        data$mean[pp & ii & jj] = mean(data$value[pp & ii & jj])        
+      }
+    }  
+  }
+  data$log10Value = log10(data$mean)
+  data$value=NULL
+  names(data) <- gsub("mean", "value", names(data))
+  unique(data)
+}
+
+data = mergeWells(data)
+@
+
+\subsubsection{Viability normalization}
+
+The data is normalized to the viability control "CTG" assay wells on each plate.
+<<normalizeViability, dependson = c(-1), fig.show="hold", fig.cap=viab_fig.cap, fig.subcap=viab_fig.subcap, fig.width=fw, fig.height=fh>>=
+normalizeViability <- function(data){
+  for(plate in unique(data$plate)){
+    pp = data$plate == plate
+    for(drug in unique(data$drug)){
+      ii = data$drug == drug
+      jj = data$assay == "CTG"
+         
+      data$normalized[ii & pp] = data$value[ii & pp] / data$value[ii & jj & pp]
+      
+      data$logNormalized[ii & pp] = 
+        data$log10Value[ii & pp] - data$log10Value[ii & jj & pp]
+    }  
+  }
+  data
+}
+
+data = normalizeViability(data)
+head(data)
+
+
+# Error bars represent standard error of the mean
+ggplot(data, aes(x=drug, y=normalized, color=drug, shape=plateName)) + 
+  geom_point(position=position_jitter(height=0), size=2.5) +
+  theme_bw() +
+  scale_color_manual(values=cbpalette) +
+  facet_grid(assay ~ ., scales="free_y") 
+
+
+ggplot(data, aes(x=drug, y=logNormalized, color=drug, shape=plateName)) + 
+  geom_point(position=position_jitter(height=0), size=2.5) +
+  theme_bw() +
+  scale_color_manual(values=cbpalette) +
+  facet_grid(assay ~ ., scales="free_y") 
+@
+
+\subsubsection{Proteasome activity normalization}
+
+The proteasome activity is measured compared to the DMSO controls of the
+corresponding wells on each plate. For the untransformed values DMSO is set to 1
+and for the log10 transformed values DMSO is set to 0 for each assay. 
+<<normalizeAssay, dependson = c(-1), fig.show="hold", fig.cap=prot_fig.cap, fig.subcap=prot_fig.subcap, fig.width=fw, fig.height=fh>>=
+normalizeAssay <- function(data){
+  for(plate in unique(data$plate)){
+    pp = data$plate == plate
+    for(assay in unique(data$assay)){    
+      ii = data$assay == assay
+      jj = data$drug == "DMSO"
+      
+      data$normalizedActivity[ii & pp] =
+        data$normalized[ii & pp] / data$normalized[ii & jj & pp]
+      
+      data$logNormalizedActivity[ii & pp] =
+        data$logNormalized[ii & pp] - data$logNormalized[ii & jj & pp]
+    }  
+  }
+  data
+}
+
+data = normalizeAssay(data)
+head(data)
+
+# Error bars represent standard error of the mean
+ggplot(data, aes(x=drug, y=normalizedActivity, color=drug, shape=plateName)) + 
+  geom_point(position=position_jitter(height=0), size=2.5) +
+  theme_bw() +
+  scale_color_manual(values=cbpalette) +
+  facet_grid(assay ~ ., scales="free_y") 
+
+
+ggplot(data, aes(x=drug, 
+                 y=logNormalizedActivity,
+                 color=drug,
+                 shape=plateName)) + 
+  geom_point(position=position_jitter(height=0), size=2.5) +
+  theme_bw() +
+  scale_color_manual(values=cbpalette) +
+  facet_grid(assay ~ ., scales="free_y") 
+@
+
+\subsubsection{Result summary}
+
+The values are summarized using the values of all plate. Mean +- sem are plotted
+for each drug/assay combination.
+A two sided t-test is used to test whether the drugs have an effect on the 
+proteasome compared to the fixed value of the DMSO control.
+<<summary, dependson = c(-1), fig.show="hold", fig.cap=sum_fig.cap, fig.subcap=sum_fig.subcap, fig.width=fw, fig.height=fh>>=
+summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
+                      conf.interval=.95, .drop=TRUE) {
+  
+  #  handle NA's: if na.rm==TRUE, don't count them
+  length2 <- function (x, na.rm=FALSE) {
+    if (na.rm) sum(!is.na(x))
+    else       length(x)
+  }
+  
+  #  summary. For each group's data frame, return a vector with
+  # N, mean, and sd
+  datac <- ddply(data, groupvars, .drop=.drop,
+                 .fun = function(xx, col) {
+                   tTest = try(t.test(xx[[col]] - 
+                                        ifelse(grepl("log", measurevar), 
+                                               0,
+                                               1)), 
+                               silent=TRUE)
+                   c(N    = length2(xx[[col]], na.rm=na.rm),
+                     mean = mean   (xx[[col]], na.rm=na.rm),
+                     sd   = sd     (xx[[col]], na.rm=na.rm),
+                     p.value = ifelse(class(tTest) != "try-error",
+                                      tTest$p.value,
+                                      1)
+                   )
+                 },
+                 measurevar
+  )
+  
+  # Rename the "mean" column    
+  datac <- rename(datac, c("mean" = measurevar))
+  
+  datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean
+  
+  # Confidence interval multiplier for standard error
+  # Calculate t-statistic for confidence interval: 
+  # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1
+  ciMult <- qt(conf.interval/2 + .5, datac$N-1)
+  datac$ci <- datac$se * ciMult
+  
+  return(datac)
+}
+
+summary = summarySE(data, 
+                    measurevar="normalizedActivity", 
+                    groupvars=c("drug","assay"))
+
+## remove ctg assay
+summary <- subset(summary, assay!="CTG")
+
+## remove DMSO control
+summary <- subset(summary, drug!="DMSO")
+
+pthresh = 0.05
+
+p <- ggplot(summary,
+            aes(x=assay, 
+                y=100*(1-normalizedActivity), 
+                ymin=100*(1-normalizedActivity-se), 
+                ymax=100*(1-normalizedActivity+se), 
+                fill=drug)) + 
+  geom_bar(position=position_dodge(), stat="identity", color="black") +
+  geom_errorbar(width=.2,
+                position=position_dodge(.9)) +
+  theme_bw() + theme(panel.grid = element_blank()) +
+  scale_fill_manual(values=cbpalette[-1]) +
+  ylab("normalized proteasome inhibition (%)")
+if(any(summary$p.value < pthresh))
+  p = p + geom_point(aes(y=ifelse(p.value < pthresh,
+                                  100*(1-normalizedActivity + se + 0.05),
+                                  NA)),
+                     position=position_dodge(.9),
+                     pch=8,
+                     col=1,
+                     show_guide = FALSE,
+                     na.rm=TRUE)
+print(p)
+
+
+logSummary = summarySE(data,
+                       measurevar="logNormalizedActivity",
+                       groupvars=c("drug","assay"))
+
+## remove ctg assay
+logSummary <- subset(logSummary, assay!="CTG")
+
+## remove DMSO control
+logSummary <- subset(logSummary, drug!="DMSO")
+
+p <- ggplot(logSummary, 
+            aes(x=assay, y=-logNormalizedActivity, 
+                ymin=-logNormalizedActivity-se, 
+                ymax=-logNormalizedActivity+se, 
+                fill=drug)) + 
+  geom_bar(position=position_dodge(), stat="identity", color="black") +
+  geom_errorbar(width=.2,
+                position=position_dodge(.9)) + 
+  theme_bw() + theme(panel.grid = element_blank()) +
+  scale_fill_manual(values=cbpalette[-1])
+if(any(summary$p.value < pthresh))
+  p = p + geom_point(aes(y=ifelse(p.value < pthresh,
+                                  -logNormalizedActivity+se+0.05,
+                                  NA)),
+                     position=position_dodge(width=.9),
+                     pch=8,
+                     col=1,
+                     show_guide = FALSE,
+                     na.rm=TRUE)
+print(p)
+@

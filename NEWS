@@ -1,0 +1,4 @@
+This new package contains the experimental data and a vignette guiding
+through the analysis of a chemical-genenetic interaction screen in isogenic
+HCT116 cell lines. The code can be executed to generate all results and figures
+for the manuscript in preparation.

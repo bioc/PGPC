@@ -1,0 +1,151 @@
+%\VignetteIndexEntry{Clustering of cell lines}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(gplots)
+if(!file.exists(file.path("result")))
+  dir.create(file.path("result"),recursive=TRUE)
+@
+
+<<figureLabelsCellLineClustering, cache=TRUE, echo=FALSE>>=
+clRaw_fig.cap = paste("Clustering of cell lines based on the raw values of the",
+                      "selected features. This figure is the basis for",
+                      "Supplementary Figure 8 (a) in the paper.")
+
+clInt_fig.cap = paste("Clustering of cell lines based on the interaction",
+                      "profiles of the selected features. This figure is the",
+                      "basis for Supplementary Figure 8 (b) in the paper.")
+@
+
+
+\section{Clustering of cell lines}
+
+The cell lines are clustered based on the raw feature values and the calculated
+interactions. We use the mean values of the replicates and scale by the MAD. 
+The correlation between cell line profiles is transformed into a distance for
+this.
+
+\subsection{Clustering cell lines based on features}
+
+Clustering of cell lines on their raw features.
+<<clusterRawFtrCelllinesSelectedControls, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', fig.cap=clRaw_fig.cap>>=
+if(!exists("interactions"))
+  data("interactions", package="PGPC")
+
+drugAnno = interactions$anno$drug
+
+filterFDR = function(d, pAdjusted, pAdjustedThresh = 0.1){
+  select = pAdjusted <= pAdjustedThresh
+  select[is.na(select)] = FALSE
+  selectedRows = apply(select, 1, any)
+  d[selectedRows,,]
+}
+
+D = interactions$D
+D2 = D
+dim(D2) = c(prod(dim(D2)[1:2]),dim(D2)[3],dim(D2)[4])
+
+SD = apply(D2, 3, function(m) apply(m, 2, mad, na.rm=TRUE))
+MSD = apply(SD, 2, function(x) { median(x,na.rm=TRUE) } )
+
+D = apply(D, c(1, 2, 4), mean)
+for (i in 1:dim(D)[3]) {
+  D[,,i] = (D[,,i] - median(D[,,i])) / MSD[i]
+}
+
+dimnames(D) = list(template = paste(interactions$anno$drug$GeneID),
+                   query = interactions$anno$line$mutation,
+                   phenotype = interactions$anno$ftr)
+
+
+## filter FDR
+pAdjustedThresh = 0.01
+pAdjusted = interactions$pVal[,,,2]
+Dfilter = filterFDR(D, pAdjusted, pAdjustedThresh)
+
+## combine controls
+Dfilter = apply(Dfilter, c(2,3), 
+                function(x) tapply(x, dimnames(Dfilter)$template, mean))
+ctrlToKeep = c("ctrl Paclitaxel", "ctrl U0126", "ctrl Vinblastin")
+Dfilter = Dfilter[!grepl("ctr", dimnames(Dfilter)[[1]]) | 
+                              dimnames(Dfilter)[[1]] %in% ctrlToKeep,,]
+
+celllineCorrelation = PGPC:::getCorr(aperm(Dfilter, c(2, 1, 3)),
+                                            drugAnno)
+celllineDist = PGPC:::trsf(celllineCorrelation)
+
+hc <- hclust(as.dist(celllineDist))
+
+heatmap.2(celllineDist, 
+          Colv = as.dendrogram(hc),
+          Rowv = as.dendrogram(hc),
+          trace="none",
+          col=colorRampPalette(c("darkblue", "white"))(64),
+          breaks = c(seq(0,0.6,length.out=64),0.6),
+          margin=c(9,9))
+
+tmp = par(mar=c(5, 4, 4, 10) + 0.1)
+plot(as.dendrogram(hc), horiz=TRUE)
+par(tmp)
+
+save(celllineDist, file=file.path("result", "celllineDist.rda"))
+@
+
+\subsection{Clustering cell lines based on interaction terms}
+
+Here we do the same analysis as above, just the interaction scores are used this
+time.
+<<clusterCelllinesSelectedControls, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dependson = c(-1), fig.cap=clInt_fig.cap>>=
+PI = interactions$res
+PI2 = PI  ##aperm(PI, c(1,3,2,4,5))
+dim(PI2) = c(prod(dim(PI2)[1:2]),dim(PI2)[3],dim(PI2)[4])
+
+SD = apply(PI2, 3, function(m) apply(m, 2, mad, na.rm=TRUE))
+MSD = apply(SD, 2, function(x) { median(x,na.rm=TRUE) } )
+
+## normalize by mean SD
+PI = apply(interactions$res, c(1, 2, 4), mean)
+for (i in 1:dim(PI)[3]) {
+  PI[,,i] = PI[,,i] / MSD[i]
+}
+
+dimnames(PI) = list(template = interactions$anno$drug$GeneID,
+                   query = interactions$anno$line$mutation,
+                   phenotype = interactions$anno$ftr)
+
+PIfilter = filterFDR(PI, pAdjusted, pAdjustedThresh)
+
+## combine controls
+PIfilter = apply(PIfilter, c(2,3), 
+                 function(x) tapply(x, dimnames(PIfilter)$template, mean))
+PIfilter = PIfilter[!grepl("ctr", dimnames(PIfilter)[[1]]) | 
+                              dimnames(PIfilter)[[1]] %in% ctrlToKeep,,]
+
+
+celllineCorrelation = PGPC:::getCorr(aperm(PIfilter, c(2, 1, 3)),
+                                            drugAnno)
+celllineDist = PGPC:::trsf(celllineCorrelation)
+
+hccelllineDist <- as.dendrogram(hclust(as.dist(celllineDist)))
+
+
+## reorder HCT116 P1 to top
+lines = rownames(celllineDist)
+wts = rep(0, length(lines))
+wts[match("HCT116 P1", lines)] = 10
+hccelllineDist= reorder(hccelllineDist, wts)
+
+
+heatmap.2(celllineDist, 
+          Colv = hccelllineDist,
+          Rowv = hccelllineDist,
+          trace="none",
+          col=colorRampPalette(c("darkblue", "white"))(64),
+          breaks = c(seq(0,0.6,length.out=64),0.6),
+          margin=c(9,9))
+
+tmp = par(mar=c(5, 4, 4, 10) + 0.1)
+plot(hccelllineDist, horiz=TRUE)
+par(tmp)
+@
+

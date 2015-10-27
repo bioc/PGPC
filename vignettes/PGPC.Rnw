@@ -1,0 +1,86 @@
+%\VignetteIndexEntry{PGPC}
+%\VignettePackage{PGPC}
+%\VignetteEngine{knitr::knitr}
+\documentclass[10pt,a4paper,oneside]{article}
+
+\newcommand{\thetitle}{to be decided }
+\usepackage[utf8]{inputenc} 
+
+\usepackage{calc}
+%\usepackage{subfig} use subcaption instead, no problems with line breaks
+\usepackage{subcaption}
+\newcommand{\subfloat}[2][need a sub-caption]{\subcaptionbox{#1}{#2}}
+
+\newcommand{\mycaption}[1]{
+  \begin{minipage}[t][10mm][b]{\linewidth}
+   \centering \huge\textbf{Figure #1}
+  \end{minipage}
+}
+
+%\pagestyle{empty}
+<<style, eval=TRUE, echo=FALSE, results="asis">>=
+BiocStyle::latex()
+@
+
+\bioctitle[PGCP, 2014]{\textsf{\textbf{Systems pharmacology by integrating 
+image-based phenotypic profiling and chemical-genetic interaction mapping}\\
+Marco Breinig, Felix A. Klein, Wolfgang Huber and Michael Boutros\\
+in preparation}}
+
+\author{Felix A. Klein \\[1em] European Molecular Biology Laboratory (EMBL),
+\\ Heidelberg, Germany\\
+\texttt{felix.klein@embl.de}}
+
+
+\begin{document}
+
+<<include=FALSE>>=
+knitr::opts_chunk$set(concordance=TRUE, 
+                      resize.width="0.45\\textwidth", 
+                      fig.align='center',
+                      tidy = FALSE,
+                      message=FALSE)
+@
+
+
+\maketitle
+\tableofcontents
+
+<<Introduction, cache=TRUE, child=file.path('src', 'Introduction.Rnw')>>=
+@
+
+<<ImageAndDataProcessing, cache=TRUE, child=file.path('src', 'ImageAndDataProcessing.Rnw')>>=
+@
+
+<<FeatureSelectionAndInteractions, cache=TRUE, child=file.path('src', 'FeatureSelectionAndInteractions.Rnw')>>=
+@
+
+<<Phenoprints, cache=TRUE, child=file.path('src', 'Phenoprints.Rnw')>>=
+@
+
+<<InteractionStarPlots, cache=TRUE, child=file.path('src', 'InteractionStarPlots.Rnw')>>=
+@
+
+<<CellLineClustering, cache=TRUE, child=file.path('src', 'CellLineClustering.Rnw')>>=
+@
+
+<<InteractionNetwork, cache=TRUE, child=file.path('src', 'InteractionNetwork.Rnw')>>=
+@
+
+<<DrugClustering, cache=TRUE, child=file.path('src', 'DrugClustering.Rnw')>>=
+@
+
+<<DrugCombinations, cache=TRUE, child=file.path('src', 'DrugCombinations.Rnw')>>=
+@
+
+<<ProteasomeFollowUp, cache=TRUE, child=file.path('src', 'ProteasomeFollowUp.Rnw')>>=
+@
+
+\section{Session Info}
+<<sessionInfo, echo=FALSE>>=
+sessionInfo()
+@
+
+\bibliography{literature}
+
+\end{document}

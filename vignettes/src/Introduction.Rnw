@@ -1,0 +1,117 @@
+%\VignetteIndexEntry{Introduction}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+@
+
+\section{Introduction}
+This document is associated with the R package \Rpackage{PGPC},
+which contains the input data and the R code for the statistical analysis
+presented in the following paper:
+
+\textit{Systems pharmacology by integrating image-based phenotypic profiling and chemical-genetic interaction mapping}\\
+Marco Breinig, Felix A. Klein, Wolfgang Huber, and Michael Boutros\\
+in preparation
+
+The figures of the paper and the intermediate results are reproduced in this
+vignette. Intermediate results are stored in the folder "result" created in the
+current working directory.
+
+<<setup, results='hide'>>=
+library("PGPC")
+if(!file.exists(file.path("result","data")))
+  dir.create(file.path("result","data"),recursive=TRUE)
+if(!file.exists(file.path("result","Figures")))
+  dir.create(file.path("result","Figures"),recursive=TRUE)
+@
+
+To reduce the computational effort required, the package contains some analysis 
+results already in precomputed form. However, the corresponding code junks are 
+contained in this document, and they can be executed to recompute all results
+except the initial image analysis. For the inital image analysis approximately
+3 TB of image data were processed. We provide the analysis of one single well to
+show the steps used in the initial image analysis.
+
+\subsection{Accessing the data}
+
+The final data object can be loaded by 
+<<load, eval=FALSE>>=
+data("interactions", package="PGPC")
+@ 
+
+A description of this object is given in the following Section together with 
+further data objects that are contained within this package. Additional information
+on the objects can be obtained from the R documentation by invoking the help
+page.
+
+<<load2, eval=FALSE>>=
+?interactions
+@ 
+
+The package contains the following data objects:
+\begin{description}  
+
+  \item[\Robject{ftrs}] \hfill \\
+  \Rclass{data.frame} with the feature data extracted from the images using imageHTS.
+  
+  \item[\Robject{datamatrixTransformed}] \hfill \\
+  Feature data represented as a \Rclass{list} containing \Rclass{array} \Robject{D} and 
+  \Rclass{list} \Robject{anno}.
+  \Robject{D} is a four-dimensional \Rclass{array} of the filtered feature data that passed quality control.
+  The dimensions represent:
+  \begin{enumerate}
+    \item drug
+    \item cell line
+    \item replicate
+    \item feature
+  \end{enumerate} 
+  To select the second feature of the first replicate of the third drug of the fourth cell line use:\\
+  \Robject{value=datamatrixfull\$D[3,4,1,2]} \\
+  To select all values of the drugs, cell lines and replicates for the first feature use:\\
+  \Robject{values=datamatrixfull\$D[, , ,1]} \\
+  \Robject{anno} is annotation of the dimensions of \Robject{D},
+  represented as a \Rclass{list} containing a \Rclass{data.frame} named \Robject{drug},
+  a \Rclass{data.frame} named \Robject{line}, 
+  a \Rclass{vector} named \Robject{repl} and a \Rclass{vector} named \Robject{ftr}.
+  Use \Robject{\$} to access the elements (e.\,g.\ \Robject{anno\$drug}).
+  
+  \item[\Robject{selected}] \hfill \\
+  \Rclass{list} of 4 elements containing the results of the feature selection.
+  The elements are, the \Rclass{vector} \Robject{selected} of selected features, 
+  the \Rclass{vector} \Robject{correlation} of their correlation, the \Rclass{vector} 
+  \Robject{ratioPositive} with the fraction of positive correlations for each iteration 
+  and a \Rclass{list} \Robject{correlationAll} which contains the correlations of all 
+  features at each iteration step.
+  
+  \item[\Robject{interactions}] \hfill \\
+  \Rclass{list} containing the \Rclass{list} \Robject{anno}, \Rclass{array} \Robject{D}, 
+  \Rclass{array} \Robject{res}, \Rclass{list} \Robject{effect} and \Rclass{array} \Robject{pVal}.
+  
+  \Robject{res} is a four-dimensional \Rclass{array} of the interaction terms and has the 
+  same dimensions as \Robject{D}. The dimensions represent:
+  \begin{enumerate}
+    \item drug
+    \item cell line
+    \item replicate
+    \item feature
+  \end{enumerate}
+  
+  \Robject{effect} contains the drug and cell line effect as three-dimensional \Rclass{array} 
+  
+  \Robject{drug} and \Robject{line} with the following dimensions:
+  \begin{enumerate}
+    \item drug/cell line
+    \item replicate
+    \item feature
+  \end{enumerate}  
+
+  \Robject{pVal} is an \Rclass{array} containing the p-values, adjusted p-values and correlation 
+  between replicates of interactions. The dimensions represent:
+  \begin{enumerate}
+    \item drug
+    \item cell line
+    \item p-value, adjusted p-value, correlation
+    \item feature
+  \end{enumerate}
+  
+\end{description}

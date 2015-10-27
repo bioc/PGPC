@@ -1,0 +1,294 @@
+%\VignetteIndexEntry{Image and data processing}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(PGPC)
+if(!file.exists(file.path("result","data")))
+  dir.create(file.path("result","data"),recursive=TRUE)
+@
+
+\section{Image and data processing}
+\subsection{Image processing on cluster}
+
+The images were processed using the R packages \Rpackage{imageHTS} and 
+\Rpackage{EBImage} \cite{Pau2010} adapting previous strategies 
+\cite{Carpenter2006, Horn2011, Laufer2013}. The following code shows the 
+processing script that was used to segment the images and extract features. 
+The calculations were parallelized by splitting the wells defined by the unique
+identifiers \Robject{unames} into different processes. The object \Robject{ftrs}
+contains all the extracted features and is included in this package.
+
+In the following code \Robject{serverURL} is the path to the folder which
+contains the example files and images in the local installation of the 
+\Rpackage{PGPC} package. \Robject{localPath} is a temporary local working 
+directory for the results. If you want to keep the results beyound the R session
+change this path to a directory on your machine. If you want to run this example
+code approximatly 150 MB free space are required for the 1 example wells. For 
+the whole screen of 36864 wells approximately 5 TB were required. The required 
+annotation and image files are automatically retrieved from the provided 
+\Robject{serverURL} if they are not found in the local directory.
+
+<<imageProcessing, eval=FALSE>>=
+localPath = tempdir()
+serverURL = system.file("extdata", package = "PGPC")
+
+imageConfFile = file.path("conf", "imageconf.txt")
+
+## circumvent memory problem on 32bit windows by segementing only spot 1.
+if(.Platform$OS.type == "windows" & R.Version()$arch == "i386")
+    imageConfFile = file.path("conf", "imageconf_windows32.txt")
+
+x = parseImageConf(imageConfFile, localPath=localPath, serverURL=serverURL) 
+
+unames = getUnames(x) ## select all wells for processing
+unames = c("045-01-C23") ## select single well for demonstration
+
+segmentWells(x, unames, file.path("conf", "segmentationpar.txt"))
+
+PGPC:::extractFeaturesWithParameter(x, 
+                                    unames,
+                                    file.path("conf", "featurepar.txt"))
+
+summarizeWellsExtended(x, unames, file.path("conf", "featurepar.txt"))
+
+## PGPC:::mergeProfiles(x)  only needed if wells were processed in parallel
+
+ftrs = readHTS(x, type="file",
+               filename=file.path("data", "profiles.tab"),
+               format="tab")
+@
+
+Images were processed in parallel on a cluster and the corresponding session 
+info is provided here:
+\begin{verbatim}
+R version 3.0.1 (2013-05-16)
+Platform: x86_64-unknown-linux-gnu (64-bit)
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C               LC_TIME=en_US.UTF-8       
+ [4] LC_COLLATE=en_US.UTF-8     LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=C                 LC_NAME=C                  LC_ADDRESS=C              
+[10] LC_TELEPHONE=C             LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] parallel  grid      stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] PGPC_0.1.1    SearchTrees_0.5.2    ggplot2_0.9.3.1      imageHTS_1.10.0     
+ [5] cellHTS2_2.24.0      locfit_1.5-9.1       hwriter_1.3          vsn_3.28.0          
+ [9] genefilter_1.42.0    EBImage_4.2.1        LSD_2.5              ellipse_0.3-8       
+[13] schoolmath_0.4       colorRamps_2.3       limma_3.16.4         splots_1.26.0       
+[17] geneplotter_1.38.0   lattice_0.20-15      annotate_1.38.0      AnnotationDbi_1.22.5
+[21] Biobase_2.20.0       BiocGenerics_0.6.0   gplots_2.11.0.1      MASS_7.3-26         
+[25] KernSmooth_2.23-10   caTools_1.14         gdata_2.12.0.2       gtools_2.7.1        
+[29] RColorBrewer_1.0-5   BiocInstaller_1.10.2
+
+loaded via a namespace (and not attached):
+ [1] abind_1.4-0           affy_1.38.1           affyio_1.28.0         bitops_1.0-5         
+ [5] Category_2.26.0       class_7.3-7           colorspace_1.2-2      DBI_0.2-7            
+ [9] dichromat_2.0-0       digest_0.6.3          e1071_1.6-1           graph_1.38.0         
+[13] GSEABase_1.22.0       gtable_0.1.2          IRanges_1.18.1        jpeg_0.1-4           
+[17] labeling_0.1          munsell_0.4           plyr_1.8              png_0.1-4            
+[21] prada_1.36.0          preprocessCore_1.22.0 proto_0.3-10          RBGL_1.36.2          
+[25] reshape2_1.2.2        robustbase_0.9-7      rrcov_1.3-3           RSQLite_0.11.4       
+[29] scales_0.2.3          splines_3.0.1         stats4_3.0.1          stringr_0.6.2        
+[33] survival_2.37-4       tiff_0.1-4            tools_3.0.1           XML_3.96-1.1         
+[37] xtable_1.7-1
+\end{verbatim}
+
+\subsection{Data extraction and conversion}
+
+The \Robject{ftrs} object is included in this vignette and the following code
+junks can be executed to generate the results described in the following.
+
+The extracted feature data are represented in \Rclass{data.frame} where each row
+corresponds to a well in the screen defined by the unique identifier 
+\Robject{uname} in the first column. All remaining columns represent the 
+extracted features. There are 36864 wells (12 cell lines * 2 replicates * 
+4 plates * 384 wells).
+
+<<convertData1,eval=FALSE>>=
+data("ftrs", package="PGPC")
+dim(ftrs)
+ftrnames = colnames(ftrs[,-1])
+@
+
+For further processing the data are transformed into an array.
+
+<<convertData2, eval=FALSE>>=
+makeArray <- function(df, nLines=12, nWells=384, nPlates=4, nRep=2){
+  ## df = list of features ordered by unames
+  if(! nLines*nWells*nPlates*nRep == nrow(df))
+    stop("Wrong dimensions!")
+
+  ## order by replicate
+  replicate <- rep(c(rep(1, nWells), rep(2, nWells)),
+                   nrow(df)/(nWells*nRep))
+  df = df[order(replicate),]
+  
+  ## create matrix
+  D = as.matrix(df[,-1])
+  
+  ## convert Matrix: x=Gene/wells, y=Celllines, z=replicates
+  dim(D) = c(nPlates*nWells,nLines,nRep,ncol(D))
+  invisible(D)
+}
+
+D = makeArray(ftrs)
+dim(D)
+
+## free space and save full data matrix
+rm("ftrs")
+datamatrixfull = list(D = D, anno=list(ftr=ftrnames))
+save(datamatrixfull, file=file.path("result","data","datamatrixfull.rda"), 
+     compress="xz")
+rm("datamatrixfull")
+@
+
+\subsection{Annotation}
+The drug annotation was given for the plate format and had to be converted to 
+fit the matrix format. The \Robject{Content} is set to \Robject{"empty"} if 
+\Robject{GeneID} is \Robject{"no treatment"}. 
+
+<<annotation1, eval=FALSE>>=
+drug = read.delim(
+  system.file("extdata",
+              "conf",
+              "Changed_LOPAC3_384_convert96er_GeneID_updated_Selectivity.txt",
+    package = "PGPC"),
+  stringsAsFactors=FALSE,
+  encoding="latin1")
+
+drug$Plate = NULL
+drug = unique(drug)
+drug$Content[drug$GeneID == "no treatment"] = "empty"
+drug$Content[grep("ctrl", drug$GeneID)] = drug$GeneID[grep("ctrl", drug$GeneID)]
+drug$Content[grep("neg", drug$GeneID)] = drug$GeneID[grep("neg", drug$GeneID)]
+@
+
+The annotation of the cell lines contains the name, mutation and start plate for
+each cell line.
+
+<<annotation2, eval=FALSE>>=
+line <- data.frame(name = c('02-006', '02-031', 
+                     '02-004', '104-009', 'PAR007', 
+                     '104-001', '104-004', '104-007', 
+                     '104-008', '02-008', '02-030', 'PAR001'),
+                   mutationDetailed =  c('AKT1-/-&AKT2-/-', 'MEK2-/-',
+                     'AKT1-/-', 'CTNNB1 mt-/wt+', 'PARENTAL007', 
+                     'P53-/-', 'PTEN-/-', 'PI3KCA mt-/wt+', 'KRAS mt-/wt+', 
+                     'BAX-/-', 'MEK1-/-', 'PARENTAL001'),
+                   mutation = c('AKT1/2', 'MEK2',
+                     'AKT1', 'CTNNB1 wt', 'HCT116 P2', 
+                     'P53', 'PTEN', 'PI3KCA wt', 'KRAS wt', 
+                     'BAX', 'MEK1', 'HCT116 P1'),
+                   startPlate=seq(1, (4*12), by = 4),
+                   stringsAsFactors=FALSE)
+
+anno=list(drug=drug, line=line, repl=1:2, ftr=ftrnames)
+save(anno, file=file.path("result","data","anno.rda"), compress="bzip2")
+@
+  
+\subsection{Removal/Filtering of empty wells and features}
+
+Empty and flagged wells are removed from further analysis.
+
+<<removeEmptyWells, eval=FALSE>>=
+emptyWell = anno$drug$Content == "empty"
+
+screenlog <- read.delim(system.file("extdata",
+                                    "conf",
+                                    "2013-01-10_LOPACScreenlog_plate.txt",
+                                    package = "PGPC"),                                
+                        stringsAsFactors=FALSE)
+allPlates = screenlog$Well[screenlog$Plate=="*"]
+flaggedWell = anno$drug$Well %in% allPlates
+
+singlePlate = screenlog[screenlog$Plate!="*",]
+singlePlate$Plate = paste("P", singlePlate$Plate, sep="")
+for (i in 1:nrow(singlePlate)){
+  flaggedWell[singlePlate$Plate[i] == anno$drug$Plate & 
+                singlePlate$Well[i] == anno$drug$Well] = TRUE
+}
+
+D <- D[!(emptyWell | flaggedWell),,,]
+
+anno$drug <- anno$drug[!(emptyWell | flaggedWell),]
+rownames(anno$drug) <- 1:nrow(anno$drug)
+@
+
+Some of the features contain only a small number of unique values 
+(this is especially the case for quantile-based features). Here we remove
+features with less than 2000 unique values (of 32928 measured values per
+feature).
+
+<<removeFeature1,eval=FALSE>>=
+levels = apply(D, 4, function(x) length(unique(c(x))))
+
+D = D[,,,!(levels < 2000)]
+anno$ftr = anno$ftr[-which(levels < 2000)]
+
+datamatrixWithAnnotation = list(D=D, anno=anno)
+save(datamatrixWithAnnotation, 
+     file=file.path("result","data","datamatrixWithAnnotation.rda"), 
+     compress="xz")
+@
+
+
+\subsection{Generalized logarithm transformation}
+
+The data is transformed to a logarithmic scale using a so-called generalized
+logarithm transformation~\cite{Huber2002}:
+\begin{equation}\label{eq:glog}
+f(x; c) = \log\left(\frac{x+\sqrt{x^2+c^2}}{2}\right).
+\end{equation}
+This avoids singularities for values equal to or smaller than 0. We use the 
+5\% quantile as parameter $c$. In the cases where the 5\% quantile is zero we
+use 0.05 times the maximum as parameter $c$.
+
+<<glog>>=
+glog <- function(x, c) {
+  log2((x+sqrt(x^2+c^2))/2)
+}
+@
+
+<<transformation1, eval=FALSE>>=
+D = datamatrixWithAnnotation$D
+quantile <- apply(D, 4, quantile, probs=0.05)
+
+zeroQt <- quantile == 0
+quantile[zeroQt] <- 0.05*apply(D[,,,zeroQt], 4, max)
+
+for (i in seq_len(dim(D)[4])) {
+  D[,,,i] = glog(c(D[,,,i]), c=quantile[i])
+}
+
+datamatrixTransformed = list(D=D, anno=datamatrixWithAnnotation$anno)
+save(datamatrixTransformed, 
+     file=file.path("result","data","datamatrixTransformed.rda"), 
+     compress="xz")
+@
+
+<<transformation2>>=
+if(exists("datamatrixWithAnnotation")) rm(datamatrixWithAnnotation)
+if(!exists("datamatrixTransformed")){
+  data("datamatrixTransformed", package="PGPC")
+} else {
+  PGPC:::checkConsistency("datamatrixTransformed")
+}
+@ 
+
+The data are now represented in the 
+\Sexpr{length(dim(datamatrixTransformed$D))}-dimensional array \Robject{D}
+with dimensions
+\begin{center}
+\begin{tabular}{lrrl}
+& \Sexpr{dim(datamatrixTransformed$D)[1]} & chemical compounds \\
+$\times$ & \Sexpr{dim(datamatrixTransformed$D)[2]} & cell line \\
+$\times$ & \Sexpr{dim(datamatrixTransformed$D)[3]} & biological replicate \\
+$\times$ & \Sexpr{dim(datamatrixTransformed$D)[4]} & phenotypic features
+\end{tabular}
+\end{center}
+A precomputed version of the \Robject{datamatrixTransformed} is available from
+the package and can be loaded by \\
+\Robject{data("datamatrixTransformed", package="PGPC")}.

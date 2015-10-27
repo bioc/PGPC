@@ -1,0 +1,773 @@
+%\VignetteIndexEntry{Drug clustering}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(PGPC)
+if(!file.exists(file.path("result","Figures")))
+  dir.create(file.path("result","Figures"),recursive=TRUE)
+@
+
+
+
+\section{Heat maps of interaction profiles}
+In this section we display the interaction profiles as heatmaps. 
+In order to visualize the interactions of all features in one plot the
+interaction terms are scaled by the median and median absolute deviation for
+each feature.
+
+<<heatmapAll, cache=TRUE, fig.height=9, fig.width=14, resize.width="0.9\\textwidth", dev.args=list(pointsize=6), fig.cap="Heatmap of interaction profiles for all drugs">>=
+if(!exists("interactions")){
+  data("interactions", package="PGPC")
+} 
+PI = interactions$res
+PI2 = PI  ##aperm(PI, c(1,3,2,4,5))
+dim(PI2) = c(prod(dim(PI2)[1:2]),dim(PI2)[3],dim(PI2)[4])
+
+SD = apply(PI2, 3, function(m) apply(m, 2, mad, na.rm=TRUE))
+MSD = apply(SD, 2, function(x) { median(x,na.rm=TRUE) } )
+
+## normalize by mean SD
+PI = apply(interactions$res, c(1, 2, 4), mean)
+for (i in 1:dim(PI)[3]) {
+  PI[,,i] = PI[,,i] / MSD[i]
+}
+
+dimnames(PI) = list(template = interactions$anno$drug$GeneID,
+                   query = interactions$anno$line$mutation,
+                   phenotype = interactions$anno$ftr)
+
+myColors = c(`Blue`="cornflowerblue",
+  `Black`="#000000",
+  `Yellow`="yellow")
+colBY = colorRampPalette(myColors)(513)
+
+cuts = c(-Inf,
+         seq(-6, -2, length.out=(length(colBY)-3)/2),
+         0.0,
+         seq(2, 6, length.out=(length(colBY)-3)/2),
+         +Inf)
+
+ppiw = .25
+ppih = 1.4
+fac = 2.2
+d = dim(PI)
+
+ordTempl = PGPC:::orderDim(PI, 1)
+ordQuery = PGPC:::orderDim(PI, 2)
+ordFeat  = PGPC:::orderDim(PI, 3)
+
+PGPC:::myHeatmap(PI[ordTempl, ordQuery, ordFeat], 
+                 cuts=cuts,
+                 fontsize=10,
+                 col=colBY)
+@
+
+Next we focus on the interactions with a FDR below 0.01. Also all controls 
+are removed, except Paclitaxel, U0126 and Vinblastin. The mean values accross 
+the control wells are calculated for the selected controls.
+
+<<heatmapFiltered, cache=TRUE, fig.height=9, fig.width=14, resize.width="0.9\\textwidth", dev.args=list(pointsize=6), dependson = c(-1), fig.cap="Heatmap of interaction profiles for drugs that show at least one specific interaction">>=
+filterFDR = function(d, pAdjusted, pAdjustedThresh = 0.1){
+  select = pAdjusted <= pAdjustedThresh
+  select[is.na(select)] = FALSE
+  selectedRows = apply(select, 1, any)
+  d[selectedRows,,]
+}
+
+pAdjustedThreshold = 0.01
+pAdjusted = interactions$pVal[,,,2]
+PIfilter = filterFDR(PI, 
+                    pAdjusted, 
+                    pAdjustedThresh = pAdjustedThreshold)
+
+PIfilter = apply(PIfilter, c(2,3), 
+                 function(x) tapply(x, dimnames(PIfilter)$template, mean))
+
+ctrlToKeep = c("ctrl Paclitaxel", "ctrl U0126", "ctrl Vinblastin")
+### some other contrls:
+# ctrlToKeep = c("ctrl Paclitaxel", "ctrl U0126", "ctrl Vinblastin", "ctrl IWP", "ctrl DAPT")
+PIfilter = PIfilter[!grepl("ctr", dimnames(PIfilter)[[1]]) | 
+                              dimnames(PIfilter)[[1]] %in% ctrlToKeep,,]
+
+ordTempl = PGPC:::orderDim(PIfilter, 1)
+ordQuery = PGPC:::orderDim(PIfilter, 2)
+ordFeat  = PGPC:::orderDim(PIfilter, 3)
+
+PGPC:::myHeatmap(PIfilter[ordTempl,ordQuery,ordFeat],
+                 cuts=cuts,
+                 fontsize=10,
+                 col=colBY)
+
+drugAnno = interactions$anno$drug
+subset = drugAnno[drugAnno$compoundID %in% dimnames(PIfilter)[[1]] & 
+                    !grepl("ctr", drugAnno$GeneID),]
+write.table(subset[, c("Name", "GeneID", "Selectivity", "Selectivity_updated")],
+            file=file.path("result", "annotation_selected_compounds.txt"),
+            sep="\t",
+            quote=FALSE,
+            row.names=FALSE)
+@
+
+
+\section{Clustering of interaction profiles}
+\subsection{Clustering of interaction profiles using the filtered data}
+
+To investigate drug similarity and cluster drugs with similar function or
+targets, we use the interactions profiles to calculate a distance between the
+drugs. The metric that we use is 1-cor(x,y), where x and y represent the
+interaction profiles for two drugs.
+<<clusterHeatmap, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of interaction profiles for drugs that show at least one interaction.">>=
+PIdist = PGPC:::getDist(PIfilter, drugAnno=drugAnno)
+
+hcInt <- as.dendrogram(hclust(as.dist(PIdist)))
+
+heatmap.2(PIdist, 
+          Colv = hcInt,
+          Rowv = hcInt,
+          trace="none",
+          col=colorRampPalette(c("darkblue", "white"))(64),
+          breaks = c(seq(0,0.6,length.out=64),0.6),
+          cexRow=.15,
+          cexCol=.15)
+@
+
+\subsubsection{Reordered dendrogram}
+
+Due to the ambiguity of the cluster tree and for visualization purposes we 
+rearange two clusters.
+Clusters are colored by cutting the cluster tree at a height of 0.6. For 
+visability we only color clusters that contain at least 3 drugs.
+<<clusterHeatmapReordered, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of interaction profiles for drugs that show at least one interaction. Clusters of size larger than 2 are colored. The dendrogram and coloring of clusters in this figure are the basis for Figure 5 (a) and Supplementary Figure 12 in the paper.">>=
+
+## reorder dendrogram
+wts = rep(0, dim(PIdist)[1])
+
+## reorder bio cluster
+inbetween = c(146, 187,  66, 170,  73, 121, 180)
+wts[inbetween] = 1000
+
+drugIds = sapply(strsplit(rownames(PIdist), " "), "[", 1)
+
+## reorder Etoposide cluster
+wts[match("79462", drugIds)] = 10
+
+## reorder calcimycin cluster
+wts[match("79471", drugIds)] = 5
+wts[match("79982", drugIds)] = 10
+
+hcInt = reorder(hcInt, wts)
+
+cluster = cutree(as.hclust(hcInt), h=0.6)
+
+## make color table
+inCl <- table(cluster)
+cl2col <- data.frame(cl=names(inCl), col="white", stringsAsFactors=FALSE)
+largerCluster <- names(inCl[inCl>2])
+cl2col$col[cl2col$cl %in% largerCluster] <- rainbow(length(largerCluster))
+
+col = cl2col$col[match(cluster, cl2col$cl)]
+
+heatmap.2(PIdist, 
+          Colv = hcInt,
+          Rowv = hcInt,
+          trace="none",
+          col=colorRampPalette(c("darkblue", "white"))(64),
+          breaks = c(seq(0,0.6,length.out=64),0.6),
+          cexRow=.15,
+          cexCol=.15,
+          RowSideColors=col)
+@
+
+
+\subsection{Structural similarity of compounds}
+
+Here we investigate the chemical similarity of compounds based on their 
+2D structure using the \Rpackage{ChemmineR} package. As distance measure
+the Tanimoto Coefficient is used.
+<<chemicalSimilarity, results='hide', cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug similarity defined by Tanimoto distance.">>=
+
+## read structure file
+sdfset <- read.SDFset(system.file("extdata",
+                                  "conf", 
+                                  "LOPAC-regexpr-formated.sdf", 
+                                  package = "PGPC"))
+
+## map GeneIDs and library names to the compound names in the sdf file
+drugs <-  data.frame(GeneID = dimnames(PIfilter)[[1]], stringsAsFactors=FALSE)
+drugs$Name = interactions$anno$drug$Name[match(drugs$GeneID, 
+                                               interactions$anno$drug$GeneID)]
+
+## add SDF compound name to controls
+controls <- data.frame(GeneID = c("ctrl DAPT", "ctrl IWP", "ctrl LY",  
+                                  "ctrl Paclitaxel", "ctrl PD",  "ctrl RAPA",
+                                  "ctrl U0126",   "ctrl Vinblastin",
+                                  "ctrl Wortmannin", "ctrl Y27", 
+                                  "neg ctr DMSO"),
+                       Name = c("DAPT", "IWP-2", "LY-294,002 hydrochloride", 
+                                "Taxol", "PD 98,059", "Sirolimus", "U0126",
+                                "Vinblastine sulfate salt", 
+                                "Wortmannin from Penicillium funiculosum", 
+                                "Y-27632 dihydrochloride", "neg ctr DMSO"),
+                       stringsAsFactors=FALSE)
+
+findNames <- match(controls$GeneID, drugs$GeneID)
+drugs$Name[findNames[!is.na(findNames)]] <- controls$Name[!is.na(findNames)]
+
+## get drug names in sdf file and adjust format
+drugsInSDF <- datablocktag(sdfset, 5)
+drugsInSDF[grep(" $", drugsInSDF)] <- 
+    gsub(" *$","", drugsInSDF[grep(" $", drugsInSDF)])
+
+## keep only selected drugs and add selected controls twice to sdf file
+ctrlToKeep = c("ctrl Paclitaxel", "ctrl U0126", "ctrl Vinblastin")
+selectedControls <- match(controls$Name[match(ctrlToKeep, controls$GeneID)], 
+                          datablocktag(sdfset, 5))
+sdfsetControls <- sdfset[selectedControls]
+cid(sdfsetControls) <- ctrlToKeep
+
+sdfsetMerged <- c(sdfset[unique(match(drugs$Name, drugsInSDF))] , 
+                  sdfsetControls)
+selectedDrugsInSDF <- drugsInSDF[unique(match(drugs$Name, drugsInSDF))]
+
+## Structure similarity searching and clustering using atom pairs
+## use unique(inSDFfile) because controls could appear twice
+## Generate atom pair descriptor database for searching
+apset <- sdf2ap(sdfsetMerged)
+dummy <- cmp.cluster(db=apset,
+                     cutoff=0,
+                     save.distances=file.path("result", "distmat.rda"))
+load(file.path("result", "distmat.rda"))
+
+## annotate distance matrix with GeneIDs and drugnames
+dimnames(distmat) <- list(c(drugs$GeneID[match(selectedDrugsInSDF, drugs$Name)],
+                            ctrlToKeep),
+                          c(selectedDrugsInSDF, ctrlToKeep))
+
+hc <- as.dendrogram(hclust(as.dist(distmat), method="single"))
+
+heatmap.2(1-distmat,
+          Rowv=hc,
+          Colv=hc,
+          col=colorRampPalette(c( "white","antiquewhite", "darkorange2"))(64), 
+          density.info="none", 
+          trace="none",
+          main="Structural similarity")
+@
+
+\subsubsection{Chemical similarity heat map ordered by interaction profile similarity}
+
+The chemical similarity is plotted ordered by interaction profile similarity.
+<<chemicalSimilarityReorderd, results='hide', cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Heatmap of drug similarity defined by Tanimoto distance ordered according to interaction profile similarity.">>=
+## check correct ordering
+drugIds = sapply(strsplit(rownames(PIdist), " "), "[", 1)
+drugIds[grep("ctrl", drugIds)] = gsub(" $", "", 
+                                      rownames(PIdist)[grep("ctrl", drugIds)])
+stopifnot(!any(diff(match(drugIds, rownames(distmat))) != 1))
+
+heatmap.2(1-distmat,
+          Rowv=hcInt,
+          Colv=hcInt,
+          col=colorRampPalette(c( "white","antiquewhite", "darkorange2"))(64), 
+          density.info="none", 
+          trace="none",
+          main="Structural similarity orderd by interaction similarity")
+@
+
+\subsubsection{Combined cluster heat map}
+The interaction profile similarity and chemical similarity are combined in one
+heat map which is ordered by interaction profile similarity.
+
+A list of identified clusters is plotted seperately in the folder 
+result/Figures/ in the working directory.
+<<chemicalSimilarityCombined, results='hide', cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug interaction profiles combined with chemical similarity defined by Tanimoto distance. This figure is the basis of Figure 5 (a) in the paper.">>=
+## plot combined cluster heatmap
+chemDistOrdered = distmat[order.dendrogram(rev(hcInt)), order.dendrogram(hcInt)]
+
+ordered  = PIdist[order.dendrogram(rev(hcInt)), order.dendrogram(hcInt)]
+ordered[nrow(ordered) - row(ordered) + 2 < col(ordered) + 1] = 
+    -1-chemDistOrdered[nrow(ordered) - row(ordered) + 2 < col(ordered) + 1]
+
+heatmap.2(ordered, 
+          Rowv=FALSE,
+          Colv=FALSE,
+          dendrogram="none",
+          col=c(colorRampPalette(c( "white","antiquewhite", "darkorange2"))(64), 
+                colorRampPalette(c("darkblue", "white"))(64)),
+          breaks = c(seq(-2,-1,length.out=64), -0.5, seq(0,0.6,length.out=64)),
+          trace="none",
+          main="Structural similarity orderd by interaction similarity")
+
+<<chemicalSimilarityCombinedCluster, results='hide', cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1)>>=
+
+cluster = list(C1 = c(79802, 79184, 80101, 80082, "ctrl Paclitaxel", 80075, 
+                      "ctrl Vinblastin", 79615, 79607),
+               C2 = c("ctrl U0126", 80091, 79902),
+               C3 = c(79225, 79014),
+               C4=c(79275, 79047),
+               C5=c(79087, 79033),
+               C6=c(78978, 78919),
+               C7=c(79411, 79410),
+               C8=c(79294, 79028, 79812, 79190, 79016),
+               C9=c(79653, 79215, 80136, 79191),
+               C10=c(79104, 79074),
+               C11=c(79497, 79444, 80044, 79819, 79111),
+               C12=c(79926, 79740),
+               C13=c(79164, 80032, 79143),
+               C13B=c(80038, 79164, 80032, 79143, 79064),
+               C14=c(79817, 79229, 79038),
+               C15=c(79165, 79334, 79503),
+               C15B=c(79474, 79165, 79334, 79503),
+               C16=c(79892, 79057, 79922),
+               C17=c(80104, 79837),
+               C18=c(79192, 79122, 79647),
+               C18B=c(79192, 79122, 79647, 79116, 79020),
+               C19=c(78909, 78908, 78894),
+               C19B=c(79859, 78909, 78908, 78894))
+
+## get reordered drug ids
+drugIds = sapply(strsplit(rownames(ordered), " "), "[", 1)
+drugIds[grep("ctrl", drugIds)] = gsub(" $", "",
+                                      rownames(ordered)[grep("ctrl", drugIds)])
+
+for(clName in names(cluster)){
+  cl = cluster[[clName]]
+  pdf(file=file.path("result", "Figures", paste0(clName, ".pdf")), 
+      width=8,
+      height=8)
+  heatmap.2(ordered[match(cl, drugIds), rev(match(cl, rev(drugIds)))], 
+            Rowv=FALSE,
+            Colv=FALSE,            
+            dendrogram="none",
+            col=c(colorRampPalette(c("white",
+                                     "antiquewhite",
+                                     "darkorange2"))(64), 
+                  colorRampPalette(c("darkblue", "white"))(64)),
+            breaks = c(seq(-2,-1,length.out=64), 
+                       -0.5, 
+                       seq(0,0.6,length.out=64)),
+            trace="none",
+            key=FALSE,
+            main=clName)
+  dev.off()
+}
+@
+
+\subsection{Clustering of interaction profiles using the filtered data of a single parental cell line}
+To estimate the information obtained from a high-content screen in a single 
+cell line, we looked at drug similarities, using just one parental cell line.
+<<clusterHeatmapSingleCellLine, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1),  fig.cap="Clustering of drug interaction profiles using data from just one parental cell line. This figure is the basis of Supplementary Figure 13 in the paper.">>=
+## remove controls
+singleCellLine = PIfilter[, match("HCT116 P2", dimnames(PIfilter)[[2]]),]
+
+singleDist = PGPC:::getDist(singleCellLine, drugAnno=drugAnno)
+
+hcsingleDist <- as.dendrogram(hclust(as.dist(singleDist)))
+
+heatmap.2(singleDist, 
+          Colv = hcsingleDist,
+          Rowv = hcsingleDist,
+          trace="none",
+          col=colorRampPalette(c("darkblue", "white"))(64),
+          breaks = c(seq(0,0.6,length.out=64),0.6))
+@
+
+Next the heatmap for single cell line is ordered by the dendrogram obtained
+by using all data.
+<<clusterHeatmapSingleCellLineOrdered, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug interaction profiles using data from just one parental cell line ordered by the clustering of the whole data set.">>=
+## combine controls
+heatmap.2(singleDist, 
+          Colv = hcInt,
+          Rowv = hcInt,
+          trace="none",
+          col=colorRampPalette(c("darkblue", "white"))(64),
+          breaks = c(seq(0,0.6,length.out=64),0.6))
+@
+
+\subsection{Clustering of interaction profiles using the filtered cell number as feature.}
+
+To estimate the information obtained from a pharmaco-genetic screen using only 
+cellular fitness as a readount, we looked at drug similarities, using just the 
+cell number feature of all cell lines.
+
+<<clusterHeatmapJustCellNumber, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug interaction profiles using just the cell number feature of all cell lines. This figure is the basis of Supplementary Figure 13 in the paper.">>=
+## combine controls
+justN = PIfilter[,,match("n", dimnames(PIfilter)[[3]])]
+
+justNDist = PGPC:::getDist(justN, drugAnno=drugAnno)
+
+hcjustNDist <- as.dendrogram(hclust(as.dist(justNDist)))
+
+heatmap.2(justNDist, 
+          Colv = hcjustNDist,
+          Rowv = hcjustNDist,
+          trace="none",
+          col=colorRampPalette(c("darkblue", "white"))(64),
+          breaks = c(seq(0,0.6,length.out=64),0.6))
+@
+
+Next the heatmap for only cell number is ordered by the dendrogram obtained
+by using all data.
+<<clusterHeatmapJustCellNumberOrdered, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug interaction profiles using just the cell number feature of all cell lines ordered by the clustering of the whole data set.">>=
+## combine controls
+heatmap.2(justNDist, 
+          Colv = hcInt,
+          Rowv = hcInt,
+          trace="none",
+          col=colorRampPalette(c("darkblue", "white"))(64),
+          breaks = c(seq(0,0.6,length.out=64),0.6))
+@
+
+
+<<chemicalSimilarity2, results='hide', cache=TRUE, fig.keep='none', dependson = c(-1)>>=
+###### check tanimoto for specifc compounds..
+grepSDFset("BAY 11-7082", sdfset, field="datablock", mode="subset")
+grepSDFset("BAY 11-7085", sdfset, field="datablock", mode="subset")
+grepSDFset("Stattic", sdfset, field="datablock", mode="subset")
+grepSDFset("Ouabain", sdfset, field="datablock", mode="subset")
+grepSDFset("Dihydroouabain", sdfset, field="datablock", mode="subset")
+grepSDFset("Brefeldin A", sdfset, field="datablock", mode="subset")
+
+# bay7082 is CMP1018
+# bay7085 is CMP183
+# stattic is 1048
+cmp.similarity(apset["CMP1018"], apset["CMP183"])
+cmp.similarity(apset["CMP1018"], apset["CMP1048"])
+cmp.similarity(apset["CMP183"], apset["CMP1048"])
+
+plot(sdfset[1018], print=FALSE)
+plot(sdfset[183], print=FALSE)
+plot(sdfset[1048], print=FALSE)
+#plot(sdfset[c("1018","183", "1048", "943")], print=FALSE)
+# ouabain is CMP943?
+#79229
+#79817
+# Dihydroouabain is CMP355
+# brefeldin is 164
+
+cmp.similarity(apset["CMP355"], apset["CMP943"])
+cmp.similarity(apset["CMP355"], apset["CMP164"])
+cmp.similarity(apset["CMP943"], apset["CMP164"])
+@
+
+\section{Correlation between interaction profiles of shared drug targets}
+
+\subsection{Using the target selectivity for grouping}
+
+Here we investigate how the correlation of drugs with shared drug targets is 
+distributed. This is done using the interaction profiles of all cell lines and 
+features, all cell lines and only the cell number feature as well as only the
+parental cell line and all features.
+
+The two groups of drugs with "shared targets" and "non-shared targets" are 
+compared by looking at the difference in the integral of
+the emperical distribution function of correlation coefficients.
+
+<<sharedTargets, cache=TRUE, dev.args=list(pointsize=20), dependson = c(-1)>>=
+## get mean distance for drugs with shared targets
+drugAnno = interactions$anno$drug
+Selectivity <- drugAnno$Selectivity_updated[match(dimnames(PIfilter)[[1]],
+                                                 drugAnno$GeneID)]
+
+annoForDensity = drugAnno[match(dimnames(PIfilter)[[1]],
+                                  drugAnno$GeneID),]
+
+plotDensities <- function(d, anno, ...){
+  M = PGPC:::getCorr(d, drugAnno=anno)
+  sharedClass <- array(FALSE, dim=dim(M))
+  for(target in unique(Selectivity)){
+    if(is.na(target)) next
+    targetdrugs = anno$GeneID[anno$Selectivity_updated %in% target]
+    if(length(targetdrugs)>1){
+      sel = dimnames(M)[[1]] %in% targetdrugs
+      sharedClass[sel, sel] = TRUE
+    }
+  }
+  diag(sharedClass) = TRUE
+  notSharedDist = M[!sharedClass]
+  
+  diag(sharedClass) = FALSE
+  sharedDist = M[sharedClass]
+  
+  classDist = c(sharedDist, notSharedDist)
+  class = c(rep("shared selectivity", length(sharedDist)),
+            rep("no shared selectivity", length(notSharedDist)))
+  
+  multidensity(classDist ~ class,
+               xlab="Correlation between drug profiles",
+               ylim=c(0,2.5),
+               col=c("blue", "red"),
+               ...)
+  tmp <- multiecdf(classDist ~ class,
+                   xlab="Correlation between drug profiles",
+                   subsample=FALSE,
+                   col=c("blue", "red"),
+                   ...)
+  
+  integrals <- sapply(lapply(tmp, 
+                             integrate, 
+                             lower=min(classDist),
+                             upper=max(classDist),
+                             subdivisions=length(table(classDist))),
+                      function(x) x$value)
+  
+  ## add class numbers
+  integrals = c(integrals, N=table(class))
+  
+  corOrder = order(classDist, decreasing=TRUE)
+  classDist = classDist[corOrder]
+  class = class[corOrder]
+  
+  ratio = (cumsum(class=="shared selectivity"))/
+    (cumsum(class=="shared selectivity") + 
+         cumsum(class=="no shared selectivity"))
+  
+  plot(classDist, ratio,
+       xlab="correlation coefficient",
+       ylab="shared target fraction",
+       ylim=c(0,1),
+       type="l",
+       ...)
+  abline(h = c(.1, .2, .3), col="grey", lty=2)
+  text(0, 0.3, sum(ratio >= 0.3))
+  text(0, 0.2, sum(ratio >= 0.2))
+  text(0, 0.1, sum(ratio >= 0.1))
+  
+  integrals
+}
+
+
+<<figureLabelsDrugClustering, cache=TRUE, echo=FALSE>>=
+all_fig.cap = c("Distribution of correlation coefficients of the interaction profiles for the whole data set. Pannel (b) is the basis of Figure 5 (b) in the paper.")
+justN_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using only cell number for all cell lines. Pannel (b) is the basis of Figure 5 (b) in the paper.")
+parOnly_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using all features of only one parental cell line. Pannel (b) is the basis of Figure 5 (b) in the paper.")
+fig.subcap = c("Density distribution of correlation coefficients per class",
+                   "Cumulative distribution of correlation coefficients per class.", 
+                   "Fraction of drugs with shared targets plotted against the correlation coefficients.")
+
+
+allStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles for the whole data set. Pannel (b) is the basis of Supplementary Figure 14 (a) in the paper.")
+justNStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using only cell number for all cell lines. Pannel (b) is the basis of Supplementary Figure 14 (a) in the paper.")
+parOnlyStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using all features of only one parental cell line. Pannel (b) is the basis of Supplementary Figure 14 (a) in the paper.")
+
+integral_fig.cap = "Comparison of the area under the curve (AUC) of the cummulative distribution function from the different data sets and classes defined by the target selectivity."
+integral_fig.subcap = c("Direct comparison of the AUC for each class and data set.", "Comparison of the differece in AUC between classes for the different data sets. This figure ist the basis for Figure 5 (c) in the paper.")
+
+integralStruct_fig.cap = "Comparison of the area under the curve (AUC) of the cummulative distribution function from the different data sets and classes defined by the structural similarity."
+integralStruct_fig.subcap = c("Direct comparison of the AUC for each class and data set.", 
+                        "Comparison of the differece in AUC between classes for the different data sets. This figure ist the basis for Supplementary Figure 14 (b) in the paper.",
+                        "Comparison of the differece in AUC between classes for the different data sets and classes defined by target selectivity or structural similarity.")
+
+ow = '.45\\textwidth'
+@
+
+
+
+<<correlationDistributionAll, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1), fig.cap=all_fig.cap, fig.subcap=fig.subcap, out.width=ow>>=
+intAll <- plotDensities(PIfilter, 
+                        annoForDensity, lwd=5,
+                        xlim=c(-1,1),
+                        main=paste("ctrl combined all data,",
+                                   "all isogenics and all features"))
+<<correlationDistributionJustN, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1), fig.cap=justN_fig.cap, fig.subcap=fig.subcap, out.width=ow>>=
+intN <- plotDensities(justN, 
+                      annoForDensity, lwd=5,
+                      xlim=c(-1,1),
+                      main="all isogenics, only cell number")
+<<correlationDistributionSingleLine, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1), fig.cap=parOnly_fig.cap, fig.subcap=fig.subcap, out.width=ow>>=
+intSingle <- plotDensities(singleCellLine, 
+                           annoForDensity, lwd=5,
+                           xlim=c(-1,1),
+                           main="all features, only parental cell line")
+<<correlationDistributionIntegral, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1), fig.cap=integral_fig.cap, fig.subcap=integral_fig.subcap, out.width=ow>>=
+integrals <- as.data.frame(rbind(intAll, intN, intSingle))
+integrals$type = c("all data", "only cell number,\nall cell lines", 
+                   "only parental cell line,\nall feature")
+
+theme_new = theme_bw()
+theme_new$text$size = 20
+theme_new$axis.text$size = rel(1.2) 
+
+theme_new = theme_new + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p = ggplot(data=melt(integrals,
+                     measure.vars=c("no shared selectivity",
+                                    "shared selectivity")), 
+           aes(x=type, 
+               y= value,
+               fill=variable))
+dodge <- position_dodge(.5)
+
+p = p + geom_bar(stat="identity", position=dodge, width=.5) + 
+  theme_new +
+  scale_fill_manual(values = c("blue", "red"))
+print(p)
+
+## difference
+integrals$difference = integrals$"no shared selectivity" -
+    integrals$"shared selectivity"
+integrals$similarity = "Target selectivity"
+
+p = ggplot(data=integrals, 
+           aes(x=type, 
+               y=difference))
+p = p + geom_bar(stat="identity", width=.5) + 
+  theme_new +
+  labs(title = "Target selectivity") +
+  scale_y_continuous(limits = c(0,.3))
+print(p)
+@
+
+\subsection{Using the chemical similarity for grouping}
+
+Here we use the structure similarity to look whether the interaction profiles of
+drugs with similar structure show an increased correlation. We use a threshold
+of 0.6 on the Tanimoto distances between compounds calculated with the 
+\Rpackage{ChemmineR} package.
+
+The analysis of the previous section is repeated for the two groups 
+"similar structure" and "different structure".
+
+<<TargetsDistancesVsChemicalSimilarity, cache=TRUE, fig.keep='all', fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1)>>=
+## get mean distance for drugs with shared targets
+plotDensityTanimotoThresh <- function(profile,
+                                      distmat,
+                                      tanimotoThresh = 0.6,
+                                      ...){
+
+  similarStructure = distmat < tanimotoThresh 
+  M = PGPC:::getCorr(profile, drugAnno=drugAnno)
+  
+  diag(similarStructure) = TRUE
+  notSharedDist = M[!similarStructure]
+  
+  diag(similarStructure) = FALSE
+  sharedDist = M[similarStructure]
+  
+  classDist = c(sharedDist, notSharedDist)
+  class = c(rep("similar structure", length(sharedDist)),
+            rep("different structure", length(notSharedDist)))
+  
+  multidensity(classDist ~ class,
+               xlab="Correlation between drug profiles",
+               ylim=c(0,2.5),
+               col=c("blue", "red"),
+               ...)
+  tmp <- multiecdf(classDist ~ class,
+                   xlab="Correlation between drug profiles",
+                   subsample=FALSE,
+                   col=c("blue", "red"),
+                   ...)
+  
+  integrals <- sapply(lapply(tmp, 
+                             integrate, 
+                             lower=min(classDist),
+                             upper=max(classDist),
+                             subdivisions=length(table(classDist))),
+                      function(x) x$value)
+  
+  ## add class numbers
+  integrals = c(integrals, N=table(class))
+  
+  corOrder = order(classDist, decreasing=TRUE)
+  classDist = classDist[corOrder]
+  class = class[corOrder]
+  
+  ratio = (cumsum(class=="similar structure"))/
+    (cumsum(class=="similar structure") + cumsum(class=="different structure"))
+  
+  plot(classDist, ratio,
+       xlab="correlation coefficient",
+       ylab="shared target fraction",
+       ylim=c(0,1),
+       type="l",
+       ...)
+  abline(h = c(.1, .2, .3), col="grey", lty=2)
+  text(0, 0.3, sum(ratio >= 0.3))
+  text(0, 0.2, sum(ratio >= 0.2))
+  text(0, 0.1, sum(ratio >= 0.1))
+  
+  integrals
+}
+
+## reorder according to drug order in ctrlCombined
+stopifnot(!any(diff(match(dimnames(PIfilter)[[1]], rownames(distmat))) != 1))
+
+tanimotoThresh = 0.6
+
+<<correlationDistributionStructureAll, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1), fig.cap=allStruct_fig.cap, fig.subcap=fig.subcap, out.width=ow>>=
+intAllTanimoto <- plotDensityTanimotoThresh(PIfilter, distmat, 
+                                            tanimotoThres=tanimotoThresh, lwd=5,
+                                            xlim=c(-1,1),
+                                            main=paste0("all data,", 
+                                                        " Tanimoto dist < ", 
+                                                        tanimotoThresh))
+<<correlationDistributionStructureJustN, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1), fig.cap=justNStruct_fig.cap, fig.subcap=fig.subcap, out.width=ow>>=
+intNTanimoto <- plotDensityTanimotoThresh(justN, distmat, 
+                                          tanimotoThres=tanimotoThresh,lwd=5,
+                                          xlim=c(-1,1),
+                                          main=paste("all isogenics,",
+                                                     "cellnumber only,",
+                                                     "Tanimoto dist < ", 
+                                                     tanimotoThresh))
+<<correlationDistributionStructureSingleLine, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1), fig.cap=parOnlyStruct_fig.cap, fig.subcap=fig.subcap, out.width=ow>>=
+intSingleTanimoto <- plotDensityTanimotoThresh(singleCellLine, distmat,
+                                               tanimotoThres=tanimotoThresh,
+                                               lwd=5,
+                                               xlim=c(-1,1),
+                                               main=paste("single cell line,",
+                                                          "Tanimoto dist < ", 
+                                                          tanimotoThresh))
+<<correlationDistributionStructureIntegral, cache=TRUE, fig.width=8, fig.height=8, fig.show='hold', dev.args=list(pointsize=20), dependson = c(-1), fig.cap=integralStruct_fig.cap, fig.subcap=integralStruct_fig.subcap, out.width=ow>>=
+integralsTanimoto <- as.data.frame(rbind(intAllTanimoto,
+                                         intNTanimoto,
+                                         intSingleTanimoto))
+integralsTanimoto$type = c("all data",
+                           "only cell number,\nall cell lines",
+                           "only parental cell line,\nall feature")
+
+theme_new = theme_bw()
+theme_new$text$size = 20
+theme_new$axis.text$size = rel(1.2) 
+
+theme_new = theme_new + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p = ggplot(data=melt(integralsTanimoto, 
+                     measure.vars=c("different structure",
+                                    "similar structure")), 
+           aes(x=type, 
+               y= value,
+               fill=variable))
+dodge <- position_dodge(.5)
+
+p = p + geom_bar(stat="identity", position=dodge, width=.5) + 
+  theme_new +
+  scale_fill_manual(values = c("blue", "red"))
+print(p)
+
+
+## difference
+integralsTanimoto$difference = integralsTanimoto$"different structure" -
+    integralsTanimoto$"similar structure"
+integralsTanimoto$similarity = "Chemical similarity"
+
+p = ggplot(data=integralsTanimoto, 
+           aes(x=type, 
+               y=difference))
+p = p + geom_bar(stat="identity", width=.5) + 
+  theme_new +
+  labs(title = "Chemical similarity") +
+  scale_y_continuous(limits = c(0,.3))
+print(p)
+
+cols = c("type", "difference", "similarity")
+p = ggplot(data=rbind(integrals[,cols], integralsTanimoto[,cols]), 
+           aes(x=type, 
+               y= difference,
+               fill=similarity))
+dodge <- position_dodge(.5)
+
+p = p + geom_bar(stat="identity", position=dodge, width=.5) + 
+  theme_new +
+  scale_fill_manual(values = c("grey", "black"))
+print(p)
+@

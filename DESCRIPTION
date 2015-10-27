@@ -1,0 +1,21 @@
+Package: PGPC
+Type: Package
+Title: Experimental data and analysis of the chemical-genetic
+        interaction screen in isogenic HCT116 cell lines
+Version: 0.99.4
+Author: Felix Klein
+Maintainer: Felix Klein <felix.klein@embl.de>
+Description: This package contains the experimental data and a vignette
+        guiding through the analysis of a chemical-genenetic
+        interaction screen in isogenic HCT116 cell lines. The code can
+        be executed to generate all results and figures for the
+        ymanuscript in preparation.
+License: Artistic-2.0
+LazyLoad: true
+Depends: R (>= 3.0), EBImage, imageHTS, SearchTrees, limma,
+        RColorBrewer, gplots, splots, ggplot2, geneplotter, ChemmineR,
+        reshape2, plyr
+VignetteBuilder: knitr
+Suggests: BiocStyle, knitr
+biocViews: CancerData, ColonCancerData, ExperimentData
+NeedsCompilation: no

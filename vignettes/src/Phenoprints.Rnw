@@ -1,0 +1,143 @@
+%\VignetteIndexEntry{Phenosurfs}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(PGPC)
+if(!file.exists(file.path("result","data")))
+  dir.create(file.path("result","data"),recursive=TRUE)
+@
+
+\section{Display of phenotypes as 'phenoprints'}
+
+To visualize the phenotypes represented by the extracted features, we display 
+the features as radar plots called 'phenoprints'. For this representation, each
+feature is scaled by the median absolut deviation observed and then linearly 
+transformed to the interval 0 to 1.
+
+The phenoprints for several drugs are shown for the two parental cell lines and
+the CTNNB1 wt, cell line.
+Also the phenoprint for one DMSO control well is shown for all cell lines.
+
+<<plotPhenotypes1, cache=TRUE, fig.height=8, fig.width=8, dev.args=list(pointsize=8), fig.show='hold',fig.cap=c("Phenoprints of the two parental cell lines and the CTNNB1 WT background. This figure is the basis for Figure 1 (e-l), Figure 2 (a) and Supplementary Figure 3 (b) in the paper.")>>=
+if(!exists("interactions")) data(interactions, package="PGPC")
+D = interactions$D
+D2 = D
+dim(D2) = c(prod(dim(D2)[1:2]),dim(D2)[3],dim(D2)[4])
+
+SD = apply(D2, 3, function(m) apply(m, 2, mad, na.rm=TRUE))
+MSD = apply(SD, 2, function(x) { median(x,na.rm=TRUE) } )
+
+pAdjusted = interactions$pVal[,,,2]
+
+bin <- function(x) (x-min(x)) / (max(x)-min(x))
+
+## normalize by mean SD
+D = apply(D, c(1, 2, 4), mean)
+for (i in 1:dim(D)[3]) {
+  D[,,i] = bin(D[,,i] / MSD[i])
+}
+
+dimnames(D) = list(template = paste(interactions$anno$drug$GeneID),
+                   query = interactions$anno$line$mutation,
+                   phenotype = PGPC:::hrNames(interactions$anno$ftr))
+dimnames(pAdjusted) = dimnames(D)
+
+
+drugPheno <- data.frame(name = c("DMSO", "PD98", "Vinblastin", 
+                                 "Vincristine", "Ouabain", "Rottlerin", 
+                                 "Etoposide", "Amsacrine", "Colchicine", 
+                                 "BIX"),
+                        GeneID = c("neg ctr DMSO", "79902", "80101",
+                                   "80082", "79817", "79926",
+                                   "79294", "79028", "79184",
+                                   "80002"),
+                        stringsAsFactors=FALSE)
+drugPheno$annotationName = 
+  interactions$anno$drug$Name[match(drugPheno$GeneID, 
+                                    interactions$anno$drug$GeneID)]
+
+drugPositions <- match(drugPheno$GeneID, dimnames(D)$template)
+# define order of ftrs in plot:
+#feature clustering
+#4 nseg.0.m.majoraxis.mean       --> nuclear shape
+#12 nseg.dna.m.eccentricity.sd   --> nuclear shape
+
+#7 nseg.dna.h.var.s2.mean        --> nuclear texture
+#13 nseg.dna.h.idm.s1.sd         --> nuclear texture
+#17 nseg.dna.h.cor.s2.sd         --> nuclear texture
+
+#1 n                             --> cell number
+
+#6 cseg.act.h.f12.s2.sd          --> cellular texture
+#15 cseg.act.h.asm.s2.mean       --> cellular texture
+#18 cseg.dnaact.b.mad.mean       --> cellular texture
+#16 cseg.dnaact.h.den.s2.sd      --> cellular texture
+#10 cseg.dnaact.b.mean.qt.0.05   --> cellular texture
+#3 cseg.act.h.cor.s1.mean        --> cellular texture
+#19 cseg.act.h.idm.s2.sd         --> cellular texture
+#14 cseg.dnaact.h.f13.s1.mean    --> cellular texture
+
+#9 cseg.0.s.radius.min.qt.0.05   --> cellular shape
+#5 cseg.dnaact.m.eccentricity.sd --> cellular shape
+#11 cseg.act.m.eccentricity.mean --> cellular shape
+#2 cseg.act.m.majoraxis.mean     --> cellular shape
+
+#20 nseg.0.s.radius.max.qt.0.05  --> nuclear shape
+#8 nseg.0.m.eccentricity.mean    --> nuclear shape
+
+orderFtr <- c(4,12,7,13,17,1,6,15,18,16,10,3,14,19,9,5,11,2,20,8)
+## select cell lines
+par001 <- match("HCT116 P1", dimnames(D)$query)
+Dselect <- D[drugPositions,par001,]
+Dselect <- Dselect[, orderFtr]
+
+stars(Dselect, 
+      len = 0.8, 
+      key.loc = c(8, 2),
+      labels=drugPheno$name,
+      col.stars=rainbow(dim(Dselect)[1]),
+      main = "Phenotypes of HCT116 P1", 
+      draw.segments = FALSE,
+      scale=FALSE)
+
+par007 <- match("HCT116 P2", dimnames(D)$query)
+
+Dselect <- D[drugPositions,par007,]
+Dselect <- Dselect[, orderFtr]
+
+stars(Dselect, 
+      len = 0.8, 
+      key.loc = c(8, 2),
+      labels=drugPheno$name,
+      col.stars=rainbow(dim(Dselect)[1]),
+      main = "Phenotypes of HCT116 P2", 
+      draw.segments = FALSE,
+      scale=FALSE)
+
+mtCtnb1KO <- match("CTNNB1 wt", dimnames(D)$query)
+Dselect <- D[drugPositions,mtCtnb1KO,]
+Dselect <- Dselect[, orderFtr]
+
+stars(Dselect, 
+      len = 0.8, 
+      key.loc = c(8, 2),
+      labels=drugPheno$name,
+      col.stars= rainbow(dim(Dselect)[1]),
+      main = "Phenotypes of CTNNB1 wt", 
+      draw.segments = FALSE,
+      scale=FALSE)
+
+<<plotPhenotypes2, cache=TRUE, fig.height=8, fig.width=8, dev.args=list(pointsize=8), fig.show='hold', fig.cap=c("Phenoprints of the all cell lines for a DMSO control. This figure is the basis for Supplementary Figure 4 in the paper.")>>=
+## neg controls for all cell lines
+drugPositions <- match("neg ctr DMSO", dimnames(D)$template)
+
+Dselect <- D[drugPositions,,orderFtr]
+stars(Dselect, 
+      len = 0.8, 
+      key.loc = NULL,
+      labels=dimnames(D)$query,
+      col.stars= rainbow(dim(Dselect)[1]),
+      main = "Phenotypes of DMSO control for all cell lines", 
+      draw.segments = FALSE,
+      scale=FALSE)
+@

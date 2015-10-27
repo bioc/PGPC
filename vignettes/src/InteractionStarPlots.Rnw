@@ -1,0 +1,531 @@
+%\VignetteIndexEntry{Interaction star plots}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(PGPC)
+if(!file.exists(file.path("result")))
+  dir.create(file.path("result"),recursive=TRUE)
+@
+
+\section{Display of interactions as star plots.}
+
+Similar to the phenotypes, the interaction profiles are displayed as star plots
+for the different features.
+
+\subsection{Scaled to the range of 0 to 1}
+The interactions are scaled by the median absolute deviation and linearly
+transformed to the interval 0 to 1 for this display. A ring scale is used to 
+represent the features.
+
+<<figureLabels, cache=TRUE, echo=FALSE>>=
+pi1_fig.cap = c("Interaction profiles")
+pi1_fig.subcap = c("Interaction profile of Bendamustine. This figure is the basis for Figure 4 (a) in the paper.",
+                   "Interaction profile of Disulfiram. This figure is the basis for Figure 4 (c) in the paper.", 
+                   "Interaction profile of Colchicine in the parental cell line and the CTNNB1 WT background. This figure is the basis for Figure 2 (b) in the paper.", 
+                   "Interaction profile of BIX01294 in the parental cell line and the CTNNB1 WT background. This figure is the basis for Figure 2 (b) in the paper.")
+
+pi2_fig.cap=c("Interaction profiles")
+pi2_fig.subcap=c("Interaction profile of Bendamustine. This figure is the basis for Supplementary Figure 10 (a) in the paper.",
+                 "Interaction profile of Disulfiram. This figure is the basis for Supplementary Figure 10 (b) in the paper.",
+                 "Interaction profile of Colchicine in the parental cell line and the CTNNB1 WT background. This figure is the basis for Supplementary Figure 5 in the paper.",
+                 "Interaction profile of BIX01294 in the parental cell line and the CTNNB1 WT background. This figure is the basis for Supplementary Figure 5 in the paper.")
+
+ow = '.45\\textwidth'
+@
+
+
+<<plotInteractions1_, cache=TRUE, dependson=c(-1), fig.show='hold', fig.cap=pi1_fig.cap, fig.subcap=pi1_fig.subcap, out.width=ow>>=
+#### plot interactions for 1 drug as radar plot of all celllines
+#### including ftrs as segments...
+if(!exists("interactions")) data(interactions, package="PGPC")
+int = interactions$res
+dim(int) = c(prod(dim(int)[1:2]),dim(int)[3],dim(int)[4])
+dim(int)
+SD = apply(int, 3, function(m) apply(m, 2, mad, na.rm=TRUE))
+MSD = apply(SD, 2, function(x) { median(x,na.rm=TRUE) } )
+
+pAdjusted = interactions$pVal[,,,2]
+
+bin <- function(x) (x-min(x)) / (max(x)-min(x))
+
+int = apply(interactions$res, c(1, 2, 4), mean)
+for (i in 1:dim(int)[3]) {
+  int[,,i] = int[,,i] / MSD[i]
+  int[,,i] = bin(int[,,i])
+}
+
+dimnames(int) = list(template = paste(interactions$anno$drug$GeneID),
+                     query = interactions$anno$line$mutation,
+                     phenotype = interactions$anno$ftr)
+dimnames(pAdjusted) = dimnames(int)
+
+drugPheno <- data.frame(name = c("Bendamustine", "Disulfiram",
+                                 "Colchicine", "BIX01294"),
+                        GeneID = c("79497", "80038", "79184", "80002"),
+                        stringsAsFactors=FALSE)
+drugPheno$annotationName = 
+  interactions$anno$drug$Name[match(drugPheno$GeneID, 
+                                    interactions$anno$drug$GeneID)]
+
+##order of featurs for plot
+ftrLevels=c("n",
+            "nseg.dna.h.cor.s2.sd",
+            "nseg.dna.h.idm.s1.sd",
+            "nseg.dna.h.var.s2.mean",
+            "nseg.dna.m.eccentricity.sd",
+            "nseg.0.m.majoraxis.mean",
+            "nseg.0.m.eccentricity.mean",
+            "nseg.0.s.radius.max.qt.0.05",
+            "cseg.act.m.majoraxis.mean" ,
+            "cseg.act.m.eccentricity.mean",
+            "cseg.dnaact.m.eccentricity.sd",
+            "cseg.0.s.radius.min.qt.0.05",
+            "cseg.act.h.idm.s2.sd",
+            "cseg.dnaact.h.f13.s1.mean",
+            "cseg.act.h.cor.s1.mean",
+            "cseg.dnaact.b.mean.qt.0.05",
+            "cseg.dnaact.h.den.s2.sd",
+            "cseg.dnaact.b.mad.mean",
+            "cseg.act.h.asm.s2.mean",
+            "cseg.act.h.f12.s2.sd" )
+
+## define background colors for phenogroups
+backgroundColors = c("black", 
+                     rep("grey60", 3),
+                     rep("grey40", 4),
+                     rep("grey20", 4),
+                     rep("grey80", 8))
+
+## order of mutations for plot
+mutationOrder = c("HCT116 P1", "HCT116 P2", "PI3KCA wt", 
+                  "AKT1", "AKT1/2", "PTEN", "KRAS wt", 
+                  "MEK1", "MEK2", "CTNNB1 wt", "P53", "BAX") 
+
+
+
+### plot radar for each drug showing all cell lines
+for(i in seq_len(nrow(drugPheno))){
+
+  drugPosition <- match(drugPheno$GeneID[i], dimnames(int)$template)
+  
+  Dselect <- int[drugPosition,,]
+  pAdjustedSelect <- pAdjusted[drugPosition,,]
+  
+  featureDf <- data.frame(Dselect)  
+  featureDf$line <- rownames(featureDf)
+  featureDf = melt(featureDf, id.vars="line", variable.name="feature")
+  
+  pAdjustedDf <- data.frame(pAdjustedSelect)
+  pAdjustedDf$line <- rownames(pAdjustedDf)
+  pAdjustedDf <- melt(pAdjustedDf,
+                      id.vars="line",
+                      variable.name="feature",
+                      value.name="pAdjusted")
+  
+  
+  featureDf <- merge(featureDf, pAdjustedDf, sort=FALSE)
+  
+  pAdjustedThresh = 0.01
+  
+  ## order features and cell lines
+  featureDf$feature = factor(featureDf$feature, 
+                             levels=ftrLevels, 
+                             ordered=TRUE)  
+  featureDf$line <- factor(featureDf$line, levels=mutationOrder)
+  
+  theme_new = theme_bw()
+  #theme_new$text$size = 3
+  #theme_new$axis.text$size = rel(0.2)
+  theme_new$axis.text.x = element_blank()
+  
+  maxInt = max(featureDf$value)
+  
+  colors = colorRampPalette(c("black", "grey90"))(length(unique(featureDf$line)))
+  if(i==1) colors[grep("AKT1/2", featureDf$line)[1]] = "red"
+  if(i==2) colors[grep("MEK1", featureDf$line)[1]] = "red"
+  
+  if(i > 2) {
+    colors = c("red", "black")
+    featureDf <- subset(featureDf, line %in% c("HCT116 P1", "CTNNB1 wt"))
+    featureDf$line = gsub("HCT116 P1", "CTNNB1 mut", featureDf$line)
+  }
+  
+  ## remove grid
+  theme_new$panel.grid.major$colour="white"
+  
+  if(i < 3){
+    barColor = "lightblue"    
+  }  
+  if(i==3){
+    barColor = "darkslateblue" 
+  }
+  if(i==4){
+    barColor =  "mediumvioletred"
+  }
+  
+  starplot <- ggplot(featureDf) + 
+    facet_wrap(~line, ncol=3) +
+    geom_bar(aes(feature, maxInt*1.2),
+             fill=backgroundColors,
+             stat="identity",
+             width = 1)  + 
+    geom_bar(aes(feature, maxInt),
+             fill="white",
+             stat="identity",
+             width = 1)  + 
+    geom_bar(aes(feature, value),
+             fill=barColor,
+             stat="identity") + 
+    coord_polar(start=-pi/nlevels(featureDf$feature)) +
+    ylim(c(0,maxInt*1.2)) +
+    geom_bar(aes(feature, value),
+             data = featureDf[featureDf$pAdjusted < pAdjustedThresh,],
+             fill="red",
+             stat="identity")  +
+    geom_point(aes(feature, maxInt*1.1), 
+               data = featureDf[featureDf$pAdjusted < pAdjustedThresh,],
+               pch=8,
+               col=2)  +
+    theme_new + labs(title = paste0("Interactions of ", drugPheno$name[i]))  
+  print(starplot)
+
+}
+@
+
+
+Here we plot the scaled profiles for all compounds with significant
+interactions. This was provided as Supplementary Figure 6 and the code is not
+executed for the generation of this vignette.
+<<plotInteractionsAllScaled_, cache=TRUE, fig.show='hold', eval=FALSE, dependson=c(-1)>>=
+#### plot interactions for 1 drug as radar plot of all celllines
+#### including ftrs as segments...
+
+featureDf <- do.call(rbind, 
+                     lapply(seq_len(dim(int)[1]), 
+                            function(i){
+                              tmp=data.frame(int[i,,])
+                              tmp$GeneID = dimnames(int)[[1]][i]
+                              tmp$line <- rownames(tmp)
+                              tmp
+                            })) 
+featureDf = melt(featureDf, id.vars=c("GeneID", "line"), 
+                 variable.name="feature")
+
+pAdjustedDf <- do.call(rbind, 
+                     lapply(seq_len(dim(pAdjusted)[1]), 
+                            function(i){
+                              tmp=data.frame(pAdjusted[i,,])
+                              tmp$GeneID = dimnames(pAdjusted)[[1]][i]
+                              tmp$line <- rownames(tmp)
+                              tmp
+                            }))
+pAdjustedDf <- melt(pAdjustedDf,
+                    id.vars=c("GeneID", "line"),
+                    variable.name="feature",
+                    value.name="pAdjusted")
+  
+featureDf <- merge(featureDf, pAdjustedDf, sort=FALSE)
+
+## remove controls
+featureDf <- subset(featureDf, !grepl("ctr", GeneID))
+featureDf$Name <- with(interactions$anno$drug,
+                       Name[match(featureDf$GeneID, GeneID)])
+
+
+pAdjustedThresh = 0.01
+## just keep drugs with interactions
+featureDf <- subset(featureDf, 
+                    GeneID %in% unique(GeneID[pAdjusted < pAdjustedThresh]))
+
+## order features and cell lines
+featureDf$feature = factor(featureDf$feature, 
+                           levels=ftrLevels, 
+                           ordered=TRUE)  
+featureDf$line <- factor(featureDf$line, levels=mutationOrder)
+  
+maxInt = max(featureDf$value)
+  
+colors = colorRampPalette(c("black", "grey90"))(length(unique(featureDf$line)))
+
+
+theme_new = theme_bw(base_size=5) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.text.y = element_text(size=3))
+#theme_new$text$size = 3
+#theme_new$axis.text$size = rel(0.2)
+theme_new$axis.text.x = element_blank()
+
+  
+barColor = "lightblue"    
+
+allplots <- lapply(unique(featureDf$GeneID[order(featureDf$Name)]),
+                   function(id){
+  subset=subset(featureDf, GeneID %in% id)  
+  starplot <- ggplot(subset) + 
+    facet_grid(GeneID ~ line) +
+    geom_bar(aes(feature, maxInt*1.2),
+             fill=backgroundColors,
+             stat="identity",
+             width = 1)  + 
+    geom_bar(aes(feature, maxInt),
+             fill="white",
+             stat="identity",
+             width = 1)  + 
+    geom_bar(aes(feature, value),
+             fill=barColor,
+             stat="identity") + 
+    coord_polar(start=-pi/nlevels(featureDf$feature)) +
+    ylim(c(0,maxInt*1.2)) +
+    geom_bar(aes(feature, value),
+             data = subset[subset$pAdjusted < pAdjustedThresh,],
+             fill="red",
+             stat="identity")  +
+    geom_point(aes(feature, maxInt*1.1), 
+               data = subset[subset$pAdjusted < pAdjustedThresh,],
+               pch=8,
+               col=2,
+               size=0.3) + 
+    labs(y="Interaction score", x="", title=unique(subset$Name))   +
+    theme_new
+  invisible(starplot)
+})
+
+library(gridExtra)
+ggsave(file.path("result", "all_plots.pdf"), 
+       do.call(marrangeGrob, 
+               c(allplots, list(nrow=8, ncol=1, top=NULL))),
+       width=8.27, height=11.7)
+@
+
+
+\subsection{Using the absolute values of an interaction.}
+The interactions are scaled by the median absolute deviation. The absolut values
+are plotted after scaling and the direciton of the interaction, defined by the 
+sign of the interaction term, is colorcoded. A ring scale is used to 
+represent the features.
+<<plotInteractions2_, cache=TRUE, fig.show='hold', dependson=c(-1), fig.cap=pi2_fig.cap, fig.subcap=pi2_fig.subcap, out.width=ow>>=
+#### plot interactions for 1 drug as radar plot of all celllines
+#### including ftrs as segments...
+
+int = apply(interactions$res, c(1, 2, 4), mean)
+for (i in 1:dim(int)[3]) {
+  int[,,i] = int[,,i] / MSD[i]
+}
+
+## use abs value and replace values larger than 10 by 10
+direction <- sign(int)
+
+int = abs(int)
+
+dimnames(int) = list(template = paste(interactions$anno$drug$GeneID),
+                     query = interactions$anno$line$mutation,
+                     phenotype = interactions$anno$ftr)
+dimnames(direction) = dimnames(int)
+
+
+### plot radar for each drug showing all cell lines
+for(i in seq_len(nrow(drugPheno))){
+
+  drugPosition <- match(drugPheno$GeneID[i], dimnames(int)$template)
+  
+  Dselect <- int[drugPosition,,]
+  pAdjustedSelect <- pAdjusted[drugPosition,,]
+  directionSelect <- direction[drugPosition,,]
+  
+  featureDf <- data.frame(Dselect)  
+  featureDf$line <- rownames(featureDf)
+  featureDf = melt(featureDf, id.vars="line", variable.name="feature")
+  
+  pAdjustedDf <- data.frame(pAdjustedSelect)
+  pAdjustedDf$line <- rownames(pAdjustedDf)
+  pAdjustedDf <- melt(pAdjustedDf,
+                      id.vars="line",
+                      variable.name="feature",
+                      value.name="pAdjusted")
+  
+  directionDf <- data.frame(directionSelect)
+  directionDf$line <- rownames(directionDf)
+  directionDf <- melt(directionDf,
+                      id.vars="line",
+                      variable.name="feature",
+                      value.name="direction")
+
+  directionDf$direction =
+      c("negative", "positive")[ifelse(directionDf$direction < 0, 1, 2)]
+  
+  featureDf <- merge(featureDf, pAdjustedDf, sort=FALSE)
+  featureDf <- merge(featureDf, directionDf, sort=FALSE)
+  
+  pAdjustedThresh = 0.01
+  
+  ## order features and cell lines
+  featureDf$feature = factor(featureDf$feature, 
+                             levels=ftrLevels, 
+                             ordered=TRUE)
+  featureDf$line <- factor(featureDf$line, levels=mutationOrder)
+  
+  theme_new = theme_bw()
+  #theme_new$text$size = 3
+  #theme_new$axis.text$size = rel(0.2)
+  theme_new$axis.text.x = element_blank()
+  
+  maxInt = max(featureDf$value)
+  
+  colors = colorRampPalette(c("black", "grey90"))(length(unique(featureDf$line)))
+  if(i==1) colors[grep("AKT1/2", featureDf$line)[1]] = "red"
+  if(i==2) colors[grep("MEK1", featureDf$line)[1]] = "red"
+  
+  if(i > 2) {
+    colors = c("red", "black")
+    featureDf <- subset(featureDf, line %in% c("HCT116 P1", "CTNNB1 wt"))
+    featureDf$line = gsub("HCT116 P1", "CTNNB1 mut", featureDf$line)
+  }
+  
+  ## remove grid
+  theme_new$panel.grid.major$colour="white"
+  
+  starplot <- ggplot(featureDf, aes(fill=direction)) + 
+    facet_wrap(~line, ncol=3) +
+    geom_bar(aes(feature, maxInt*1.2),
+             fill=backgroundColors,
+             stat="identity",
+             width = 1)  + 
+    geom_bar(aes(feature, maxInt),
+             fill="white",
+             stat="identity",
+             width = 1)  + 
+    geom_bar(aes(feature, value),
+             stat="identity") + 
+    coord_polar(start=-pi/nlevels(featureDf$feature)) +
+    ylim(c(0,maxInt*1.2)) +
+    geom_point(aes(feature, maxInt*1.1), 
+               data = featureDf[featureDf$pAdjusted < pAdjustedThresh,],
+               pch=8,
+               col=2) +
+    theme_new + labs(title = paste0("Interactions of ", drugPheno$name[i]))  
+  print(starplot)  
+
+}
+@
+
+Here we plot the profiles for all compounds with significant interactions using
+absolute values and color coding the direction of the interactions. This was
+provided as Supplementary Figure 7 and the code is not executed for the generation 
+of this vignette.
+<<plotInteractionsAll_, cache=TRUE, fig.show='hold', eval=FALSE, dependson=c(-1)>>=
+#### plot interactions for 1 drug as radar plot of all celllines
+#### including ftrs as segments...
+
+featureDf <- do.call(rbind, 
+                     lapply(seq_len(dim(int)[1]), 
+                            function(i){
+                              tmp=data.frame(int[i,,])
+                              tmp$GeneID = dimnames(int)[[1]][i]
+                              tmp$line <- rownames(tmp)
+                              tmp
+                            })) 
+featureDf = melt(featureDf, id.vars=c("GeneID", "line"), 
+                 variable.name="feature")
+
+pAdjustedDf <- do.call(rbind, 
+                     lapply(seq_len(dim(pAdjusted)[1]), 
+                            function(i){
+                              tmp=data.frame(pAdjusted[i,,])
+                              tmp$GeneID = dimnames(pAdjusted)[[1]][i]
+                              tmp$line <- rownames(tmp)
+                              tmp
+                            }))
+pAdjustedDf <- melt(pAdjustedDf,
+                    id.vars=c("GeneID", "line"),
+                    variable.name="feature",
+                    value.name="pAdjusted")
+
+directionDf <- do.call(rbind, 
+                     lapply(seq_len(dim(pAdjusted)[1]), 
+                            function(i){
+                              tmp=data.frame(direction[i,,])
+                              tmp$GeneID = dimnames(direction)[[1]][i]
+                              tmp$line <- rownames(tmp)
+                              tmp
+                            }))
+directionDf <- melt(directionDf, id.vars=c("GeneID", "line"), variable.name="feature", value.name="direction")
+directionDf$direction = c("negative", "positive")[ifelse(directionDf$direction < 0, 1, 2)]
+  
+featureDf <- merge(featureDf, pAdjustedDf, sort=FALSE)
+featureDf <- merge(featureDf, directionDf, sort=FALSE)
+
+## remove controls
+featureDf <- subset(featureDf, !grepl("ctr", GeneID))
+featureDf$Name <- with(interactions$anno$drug,
+                       Name[match(featureDf$GeneID, GeneID)])
+
+
+pAdjustedThresh = 0.01
+## just keep drugs with interactions
+featureDf <- subset(featureDf, 
+                    GeneID %in% unique(GeneID[pAdjusted < pAdjustedThresh]))
+
+## order features and cell lines
+featureDf$feature = factor(featureDf$feature, 
+                           levels=ftrLevels, 
+                           ordered=TRUE)  
+featureDf$line <- factor(featureDf$line, levels=mutationOrder)
+  
+maxValue=10
+  
+colors = colorRampPalette(c("black", "grey90"))(length(unique(featureDf$line)))
+
+
+theme_new = theme_bw(base_size=5) + 
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        legend.key.size = unit(.3, "cm"),
+        axis.text.y = element_text(size=3))
+#theme_new$text$size = 3
+#theme_new$axis.text$size = rel(0.2)
+theme_new$axis.text.x = element_blank()
+
+  
+barColor = "lightblue"    
+
+allplots <- lapply(unique(featureDf$GeneID[order(featureDf$Name)]),
+                   function(id){
+  subset=subset(featureDf, GeneID %in% id)
+  subset$maxInt = ifelse(max(subset$value) < maxValue,
+                         maxValue,
+                         max(subset$value))
+  
+  starplot <- ggplot(subset, aes(fill=direction)) + 
+    facet_grid(GeneID ~ line) +
+    geom_bar(aes(feature, maxInt*1.2),
+             fill=backgroundColors,
+             stat="identity",
+             width = 1)  + 
+    geom_bar(aes(feature, maxInt),
+             fill="white",
+             stat="identity",
+             width = 1)  + 
+    geom_bar(aes(feature, value),
+             stat="identity") + 
+    coord_polar(start=-pi/nlevels(featureDf$feature)) +
+    #ylim(c(0,maxInt*1.2)) +
+    scale_y_continuous() +
+    geom_point(aes(feature, maxInt*1.1), 
+               data = subset[subset$pAdjusted < pAdjustedThresh,],
+               pch=8,
+               col=2,
+               size=0.3,
+               show_guide=FALSE) +
+    labs(y="Interaction score", x="", title=unique(subset$Name)) +
+    theme_new
+  invisible(starplot)
+})
+
+library(gridExtra)
+ggsave(file.path("result", "all_plots_unscaled.pdf"),
+       do.call(marrangeGrob, 
+               c(allplots, list(nrow=8, ncol=1, top=NULL))),
+       width=8.27, height=11.7)
+
+@

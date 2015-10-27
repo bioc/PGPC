@@ -1,0 +1,168 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+<html>
+  <head>
+    <title>
+      cellHTS2 Experiment Report
+    </title>
+    <link rel="stylesheet" href="html/cellHTS.css" type="text/css">
+    <script type="text/javascript" src="html/cellHTS.js"></script>
+    <script src="html/sorttable.js"></script>
+   </head>
+   <body onload="initialize();">
+     <script type="text/javascript" src="html/wz_tooltip.js"></script>
+
+    <table class="border">
+      <tr class="border top">
+        <td class="border corner">
+          &nbsp&nbsp&nbsp&nbsp
+          <div class="helpSwitch">
+	     help: 
+	    <span onClick="toggleHelp(this);" id="helpSwitch" onmouseover="Tip('Switch off the tooltips.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+	    </span>
+	  </div>
+        </td>
+        <td class="border top">
+          <div class="header">
+	    Report for Experiment <span class="header">drug_combis</span>
+          </div>
+	  <div class="timestamp">
+            generated Thu Feb 26 15:56 2015   (<small>version 2.30.0</small>)
+          </div>
+          <div class="logo">
+	  </div>
+        </td>
+      </tr>
+      <tr class="border middle">
+        <td class="border left"></td>
+        <td class="main">
+
+    <div class="tab medium">
+      <table class="bar medium">
+	<tr>
+	  <td class="topbar">
+	  </td>
+	</tr>
+	<tr>
+	  <td class="bar">
+	  </td>
+	</tr>
+      </table>
+      <table class="tabs">
+	<tr>
+	  <td>
+
+	    <table class="medium selected mainTab" onClick="toggleTabById('mainTab', this, 'html/plateList.html');" onmouseover="Tip('A table of quality scores for each plate, replicate and channel. This also serves as the navigation for drill-down to more detailed information for a given set of plates.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Plate List
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+	    <table class="medium unselected mainTab" onClick="toggleTabById('mainTab', this, 'html/plateConf.html');" onmouseover="Tip('A graphical representation of the plate configurations. For each plate, the physical location of the positive and negative controls as well as the position of samples and possibly further types of probes are indicated by color coding.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Plate Configuration
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+	    <table class="medium unselected mainTab" onClick="toggleTabById('mainTab', this, 'html/experimentQC.html');" onmouseover="Tip('A set of diagnostic plots which provide an overview over the general screen quality. In particular, a boxplot of raw and, if applicable, normalized data values for the individual plates, and dot plots and density plots of the distribution of positive and negative controls, but only if the configure function has been called before.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Plate Summaries
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+	    <table class="medium unselected mainTab" onClick="toggleTabById('mainTab', this, 'html/screenImage.html');" onmouseover="Tip('A comprehensive plot of the the experiment results. The scored values for each plate are indicated by color coding on a rectangular grid.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Screen Summary
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+	    <table class="medium unselected mainTab" onClick="toggleTabById('mainTab', this, 'html/screenResults.html');" onmouseover="Tip('A table of the experiment result, including annotation information and a number of QC values. For data sets of reasonable size a condensed sortable table is rendered. Due to performance issues there will only be a link to a downloadable ASCII file for bigger data sets. The ASCII table contains additional information compared to the rendered version.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Screen Results
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+	    <table class="medium unselected mainTab" onClick="toggleTabById('mainTab', this, 'html/screenDescription.html');" onmouseover="Tip('Background information about the experiment and about the normalization, summarization, and scoring methods that have been applied.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Screen Description
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+           </td>
+	</tr>
+      </table>
+    </div>
+
+          <div class="main">
+	    <iframe class="main" src="html/plateList.html" name="main" frameborder="0" noresize id="main"
+              scrolling="auto" marginwidth="0" marginheight="0"
+              onload="if (window.parent && window.parent.autoIframe) {window.parent.autoIframe('main');}">
+	      <p>
+	        Your browser does not support iFrames. This page will not work for you.
+	      </p>
+	    </iframe>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

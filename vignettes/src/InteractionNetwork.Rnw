@@ -1,0 +1,385 @@
+%\VignetteIndexEntry{Interaction network}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(PGPC)
+if(!file.exists(file.path("result")))
+  dir.create(file.path("result"),recursive=TRUE)
+@
+
+<<figureLabelsInteractionNetwork, cache=TRUE, echo=FALSE>>=
+totalInt_fig.cap = c("Total number of interactions per cell line. This figure is the basis for Figure 2 (e) in the paper.")
+
+drugInt_fig.cap = c("Number of drugs with at least one specific interaction per cell line. This figure is the basis for Figure 2 (f) in the paper.")
+
+pleDeg_fig.cap = c("Pleiotropic degree per cell line. This figure is the basis for Figure 2 (d) in the paper.")
+
+intFtr_fig.cap = c("Distributions and overlap of interactions per feature")
+intFtr_fig.subcap = c("Total interactions per feature. This figure is the basis for Supplementary Figure 10 (a) in the paper.",
+                 "Overlap of interactions in the 5 phenotypic classes. This figure is the basis for Figure 2 (c) in the paper.",
+                 "Overlap of interactions in the 5 phenotypic classes shown as bar plots.")
+
+ow = '.45\\textwidth'
+@
+
+
+\section{Compound - cell line interaction network}
+
+\subsection{Extract significant interactions for visualization.}
+
+In this section we calculate some statistics from the obtained interaction data
+and generate a table of drug-cell line interactions for visualizing them graph
+network in Cytoscype \cite{Shannon2003}. 
+
+We start by extracting all interactions with an adjusted p-value < 0.01.
+
+<<drugCellLineInteractionData_, eval=TRUE, cache=TRUE>>=
+library(PGPC)
+data(interactions, package="PGPC")
+drugAnno = interactions$anno$drug
+
+d = interactions
+
+pAdjusted = interactions$pVal[,,,2]
+dimnames(pAdjusted) = list(template = paste(interactions$anno$drug$GeneID),
+                     query = interactions$anno$line$mutation,
+                     phenotype = interactions$anno$ftr)
+pAdjustedThresh = 0.01
+
+result = NULL
+for (ftr in seq_along(interactions$anno$ftr)){
+  pAdjusted = d$pVal[,,ftr,2]
+
+  top = pAdjusted <= pAdjustedThresh
+  
+  r1 = d$res[,,1,ftr][top]
+  r2 = d$res[,,2,ftr][top]
+
+  rMean = apply(d$res[,,,ftr], c(1,2), mean)[top]
+  
+  unames <- data.frame(well = rep(d$anno$drug$Well, 
+                                  length(d$anno$line$startPlate)), 
+                       plate= rep(as.numeric(gsub("P", 
+                                                  "", 
+                                                  d$anno$drug$PlateName)),
+                                  length(d$anno$line$startPlate)),
+                       startPlate = rep(d$anno$line$startPlate, 
+                                        each=nrow(d$anno$drug)))
+  unames$uname = paste(sprintf("%03d", unames$plate + unames$startPlate - 1),
+                       unames$well,
+                       sep="-")
+
+  unames = as.matrix(unames$uname)
+  dim(unames) = dim(top) 
+
+  uname = unames[which(top)]
+  
+  ## add annotation  
+  selTreatment = which(top) %% dim(top)[1]
+  selTreatment[selTreatment == 0] = dim(top)[1]
+  drug = d$anno$drug[selTreatment,]
+  line = d$anno$line[which(top) %/% dim(top)[1]+1,]
+
+  topHits = data.frame(ftr = d$anno$ftr[ftr],
+                       uname = gsub("-", "-01-", uname),
+                       GeneID = drug$GeneID,
+                       r1,
+                       r2,
+                       rMean,
+                       pAdjusted = pAdjusted[which(top)],
+                       stringsAsFactors=FALSE)
+  
+  topHits = cbind(topHits, line)
+  topHits = cbind(topHits,
+                  drugAnno[match(topHits$GeneID, drugAnno$GeneID),
+                           -match("GeneID",names(drugAnno))])
+  topHits = topHits[order(topHits$pAdjusted),]
+  rownames(topHits) = 1:nrow(topHits)
+  result=rbind(result, topHits)
+}  
+
+## add controls to names
+result$Name[grep("ctr", result$GeneID)] <- 
+  result$GeneID[grep("ctr", result$GeneID)]
+
+cat("No. of all interactions (including controls):", nrow(result))
+@
+
+\subsubsection{Removing controls from the interactions}
+
+We remove the controls from the interactions. The total number of interactions
+per cell line and total number of drugs showing an interaction for a cell line 
+is calculated and plotted.
+<<drugCellLineInteractionData3_, eval=TRUE, cache=TRUE, dependson = c(-1), fig.cap=totalInt_fig.cap>>=
+#########################
+## filter interactions
+#########################
+## 1. remove all controls
+result <- subset(result, !grepl("ctr", GeneID))
+
+cat("No. of interactions (controls removed):", nrow(result))
+cat("No. of drug-cell line interactions (ftrs combined):", 
+    nrow(unique(result[,c("GeneID", "mutation")])))
+
+## genereate summary plots
+## number of interactions per line vs. no of drugs / no of interactions per drugs
+mutationOrder = c("HCT116 P1", "HCT116 P2", "PI3KCA wt", 
+                  "AKT1", "AKT1/2", "PTEN", "KRAS wt", 
+                  "MEK1", "MEK2", "CTNNB1 wt", "P53", "BAX")
+
+## number of total interactions per cell line
+noIntPerLine = table(result$mutation)
+noIntPerLine = noIntPerLine[mutationOrder]
+
+tmp = par(mar=c(6, 4, 4, 2) + 0.1)
+mp <- barplot(noIntPerLine,
+              ylab="total interactions per cell line",
+              names.arg="")
+text(mp[,1], 
+     par("usr")[3], 
+     labels = names(noIntPerLine), 
+     srt = 45, 
+     adj = c(1.1,1.1), 
+     xpd = TRUE, 
+     cex=.9)
+
+
+<<drugCellLineInteractionData4_, eval=TRUE, cache=TRUE, dependson = c(-1), fig.cap=drugInt_fig.cap>>=
+
+## number of interaction drugs per line
+noDrugsPerLine = sapply(names(noIntPerLine), 
+                        function(line){
+                          length(unique(result$GeneID[result$mutation==line]))
+                        })
+noDrugsPerLine
+mp <- barplot(noDrugsPerLine,
+              ylab="interacting drugs per cell line",
+              names.arg="")
+text(mp[,1], 
+     par("usr")[3], 
+     labels = names(noDrugsPerLine), 
+     srt = 45, 
+     adj = c(1.1,1.1), 
+     xpd = TRUE, 
+     cex=.9)
+
+par(tmp)
+
+## percentage of all possible interactions (removing controls)
+nrow(result) / 
+  ((dim(interactions$res)[1] - 
+        sum(grepl("ctr", interactions$anno$drug$GeneID))) * 
+     prod(dim(interactions$res)[c(2,4)]))
+
+## percentage of drugs showing an interactions (removing controls)
+length(unique(result$GeneID)) / 
+    (dim(interactions$res)[1] - 
+         sum(grepl("ctr", interactions$anno$drug$GeneID)))
+@
+
+\subsubsection{Pleiotropic degree}
+
+Here we define and calculate the pleiotropic degree. It is the number of cell 
+lines that interact with a given drug.
+<<drugCellLineInteractionData5_, eval=TRUE, cache=TRUE, dependson = c(-1), fig.cap=pleDeg_fig.cap>>=
+## pleiotropy degree
+pleiotropicDegree = sapply(unique(result$GeneID), 
+                          function(drug) 
+                            length(unique(subset(result, GeneID==drug)$name)))
+
+mp <- barplot(table(pleiotropicDegree),
+              ylab="number of drugs",
+              names.arg="",
+              xlab="pleiotropy degree")
+text(mp[,1], 
+     par("usr")[3], 
+     labels = 1:12,
+     adj = c(1.1,1.1), 
+     xpd = TRUE, 
+     cex=.9)
+
+table(pleiotropicDegree)
+@
+
+For some features the pleiotropic degree shows a correlatin with the drug main 
+effect. This is especially the case for cell number.
+
+<<drugCellLineInteractionData6_, eval=TRUE, cache=TRUE, dependson = c(-1), fig.show='hold'>>=
+## pleiotropic degree vs. drug effect
+drugEffect = apply(interactions$effect$drug, c(1,3), mean)
+dimnames(drugEffect) = list(interactions$anno$drug$GeneID,
+                            interactions$anno$ftr)
+
+for(ftr in colnames(drugEffect)){
+  plot(pleiotropicDegree,
+       drugEffect[match(names(pleiotropicDegree), rownames(drugEffect)), ftr],
+       main=ftr,
+       ylab ="drug effect")
+}
+@
+
+\subsubsection{Grouping of features into feature classes.}
+First the number of interactions for each feature is calculated. 
+Then the features are grouped into feature classes and the number of
+interactions for each class is calculated. Finally the overlap between feature
+classes is computed and represented as a venn diagram and barplot.
+
+<<drugCellLineInteractionData7_, eval=TRUE, cache=TRUE, dependson = c(-1), fig.show='hold', fig.cap=intFtr_fig.cap, fig.subcap=intFtr_fig.subcap, out.width=ow>>=
+
+## no of interactions per feature
+noIntPerFtr = table(result$ftr)[interactions$anno$ftr]
+
+tmp = par(mar=c(9, 4, 4, 2) + 0.1)
+mp <- barplot(noIntPerFtr,
+              ylab="total interactions per feature",
+              names.arg="")
+text(mp[,1], 
+     par("usr")[3], 
+     labels = names(noIntPerFtr), 
+     srt = 45, 
+     adj = c(1.1,1.1), 
+     xpd = TRUE, 
+     cex=.9)
+
+par(tmp)
+
+
+result$ftrClass = PGPC:::hrClass(result$ftr)
+significant = lapply(unique(result$ftrClass), 
+                     function(selectedFtr) 
+                       unique(subset(result, ftrClass==selectedFtr)$uname))
+names(significant) = unique(result$ftrClass)
+
+## merging the interactions for each category
+plot(venn(significant))
+
+
+overlap = sapply(names(significant), 
+                 function(class1){
+                   sapply(names(significant), function(class2){
+                     length(intersect(significant[[class1]], 
+                                      significant[[class2]]))
+                   })
+                 })
+barplot(overlap, 
+        beside=TRUE,
+        legend=names(significant),
+        args.legend=list(x="topleft"))
+@
+
+\subsubsection{Interaction map export for Cytoscape}
+
+To obtain a interaction map for display in Cytoscape we remove all drugs that
+only show an interaction for one feature in a given cell line. Also ambigous
+drugs showing interactions with 3 or more cell lines are removed.
+
+<<drugCellLineInteractionData8_, eval=TRUE, cache=TRUE, dependson = c(-1)>>=
+
+## remove low confidence interactions
+result <- do.call(rbind,
+                  lapply(unique(result$name), 
+                         function(line) {
+                           tmp = subset(result, line == name)
+                           noFtrPerDrug = table(tmp$GeneID)
+                           selectedDrug = names(noFtrPerDrug[noFtrPerDrug > 1])
+                           subset(tmp, GeneID %in% selectedDrug)
+                         }))
+
+## remove ambiguous interactions
+noLinesPerDrug = sapply(unique(result$GeneID), 
+                        function(drug) 
+                          length(unique(subset(result, GeneID==drug)$name)))
+unambigDrugs = names(noLinesPerDrug[noLinesPerDrug <= 3])
+result = subset(result, GeneID %in% unambigDrugs)
+
+@
+
+Some additional statistics that are not presented in the paper are calculated
+in this section.
+<<drugCellLineInteractionData10_, eval=FALSE, cache=TRUE, dependson = c(-1)>>=
+
+## number of interactions per line vs. no of drugs / no of interactions per drugs
+noIntPerLine = table(result$name)
+barplot(noIntPerLine)
+
+noDrugsPerLine = sapply(names(noIntPerLine), 
+                        function(line) 
+                            length(unique(result$GeneID[result$name==line])))
+
+plot(as.vector(noIntPerLine), noDrugsPerLine)
+text(as.vector(noIntPerLine), noDrugsPerLine, names(noIntPerLine))
+
+noIntPerDrug = table(result$GeneID)
+barplot(noIntPerDrug)
+
+for(line in unique(result$name)){
+  barplot(table(result$GeneID[result$name==line]), main=line)
+}
+
+## features showing interactions per drug
+noFtrsPerDrug = sapply(names(noIntPerDrug), 
+                       function(drug)
+                           length(unique(result$ftr[result$GeneID==drug])))
+
+plot(as.vector(noIntPerDrug), noFtrsPerDrug)
+text(as.vector(noIntPerDrug), noFtrsPerDrug, names(noIntPerDrug))
+
+hist(noFtrsPerDrug, breaks=20)
+
+for(i in 1:5) print(sum(noFtrsPerDrug>i))
+@
+
+The results are saved and used as input to Cytoscape for visualization.
+The interactions for different features are combined into Phenogroups 
+and also merged completely. In the latter case number of feature classes
+is calculated. We used the results with phenogroups as input to Cytoscape.
+
+<<drugCellLineInteractionData11_, eval=TRUE, cache=TRUE, dependson = c(-1)>>=
+write.table(result, file=file.path("result", "cytoscapeExportFiltered.txt"),
+            sep="\t",
+            row.names=FALSE)
+
+############################
+## transform to pheno groups
+############################
+result$ftr = PGPC:::hrClass(result$ftr)
+columnsToRemove = c("r1", "r2", "rMean", "pAdjusted")
+result = unique(result[,-match(columnsToRemove, names(result))])
+
+write.table(result, 
+            file=file.path("result", "cytoscapeExportFilteredPhenoGroups.txt"),
+            sep="\t",
+            row.names=FALSE)
+
+#########################
+## combine features
+#########################
+result = do.call(rbind,
+                 lapply(unique(result$uname),
+                        function(u){
+                          tmp = subset(result, uname==u)
+                          ftr = tmp$ftr
+                          tmp = unique(tmp[,-match(c("ftr", "ftrClass"),
+                                                   names(tmp))])
+                          tmp$cellnumber =
+                              ifelse("cell number" %in% ftr, 1, 0)
+                          tmp$cellshape =
+                              ifelse("cell shape" %in% ftr, 1, 0)
+                          tmp$celltexture =
+                              ifelse("cellular texture" %in% ftr, 1, 0)
+                          tmp$nuclearshape =
+                              ifelse("nuclear shape" %in% ftr, 1, 0)
+                          tmp$nucleartexture =
+                              ifelse("nuclear texture" %in% ftr, 1, 0)
+                          tmp$noFtrClasses = length(ftr)
+                          tmp
+                        }))
+
+write.table(result, file=file.path("result",
+                                   "cytoscapeExportFilteredFtrsCombined.txt"),
+            sep="\t",
+            row.names=FALSE)
+@
+
+
+

@@ -1,0 +1,697 @@
+%\VignetteIndexEntry{Drug combination}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(PGPC)
+if(!file.exists(file.path("result")))
+  dir.create(file.path("result"),recursive=TRUE)
+@
+
+\section{Follow-up: Drug combinations}
+
+In this follow-up experiment we tested synergistic drug combinations that we
+predicted based on the chemical-genetic interaction data.
+
+First we use \Rpackage{cellHTS2} to normalize the data. The data is 
+log transformed and normalized using the NPI method of the \Rpackage{cellHTS2}.
+
+<<generateCellHTS2reportsDrugCombi, echo=TRUE, results='hide', cache=TRUE>>=
+savePath="result"
+dataPath=system.file("extdata", "drug_combinations", 
+                     package="PGPC")
+Name="drug_combis"
+LogTransform=TRUE
+Annotation="2013-10-22drugcombiAnno_2plates.txt"
+Plateconf="2013-10-22plateconfig_all.txt"
+Description="Description.txt"
+NormalizationMethod="NPI"
+NormalizationScaling="multiplicative"
+VarianceAdjust="none"
+SummaryMethod="mean"
+Score="zscore"
+
+
+PlateList=c("2013-10-22platelist_HCT_72_2layout_8plates_mod.txt",
+            "2013-10-22platelist_DLD_72_2layout_8plates.txt")
+
+## include intensities
+mySettings = getSettings()
+mySettings$plateList$intensities$include = TRUE
+setSettings(mySettings)
+
+
+<<generateCellHTS2reportsDrugCombi2, echo=TRUE, results='hide', cache=TRUE, dependson = c(-1)>>=
+for(plate in PlateList){
+  Outdir = file.path(savePath, 
+                     paste(gsub("_2layout_8plates.txt|_2layout_8plates_mod.txt",
+                                "", plate),
+                           NormalizationMethod, 
+                           VarianceAdjust, sep = "_"))
+  x = readPlateList(plate,path=dataPath, name=Name)
+  x = configure(x, descripFile=Description,
+                confFile=Plateconf,,
+                path=dataPath)
+  xp = normalizePlates(x, 
+                       log=LogTransform,
+                       scale=NormalizationScaling,
+                       method=NormalizationMethod,
+                       varianceAdjust=VarianceAdjust)
+  xp@state["normalized"] = TRUE
+  xsc = scoreReplicates(xp, sign = "-",
+                        method = Score)
+  xsc = summarizeReplicates(xsc,
+                            summary = SummaryMethod)
+  xsc = cellHTS2::annotate(xsc, 
+                           geneIDFile = file.path(dataPath,
+                                                  Annotation))
+  out = writeReport(raw = x,
+                    normalized = xp,
+                    scored = xsc,
+                    outdir=Outdir,
+                    force=TRUE)
+}
+@
+
+
+\subsection{Quality control}
+
+To check the quality of the data we create scatter plots of replicates and 
+overview plots of raw and normalized values vs. concentration for each drug 
+combination. From this analysis we found that replicate 4 of the HCT screen 
+did not correlate with the other plates. It was therefore removed from the
+analysis.
+<<qualityControl, cache=TRUE, eval=TRUE, dependson = c(-1), fig.show='hold'>>=
+experiment = "2013-10-22platelist_HCT_72_NPI_none"
+
+## get the dataframe and check the data in an explorative manner
+df = read.delim(file.path("result", experiment, "in", "topTable.txt"),
+                stringsAsFactors=FALSE)
+df$identifier = paste(df$drug1, df$drug2, sep="_")
+#  head(df)
+
+# plot correlations
+p = ggplot(data=df, aes(x=raw_r1_ch1, y= raw_r2_ch1))
+p = p + geom_point() +
+  labs(title = gsub("_", " ", gsub("2013-10-22platelist_", "", experiment)))  
+print(p)
+
+p = ggplot(data=df, aes(x=raw_r2_ch1, y= raw_r3_ch1))
+p = p + geom_point() +
+  labs(title = gsub("_", " ", gsub("2013-10-22platelist_", "", experiment))) 
+print(p)
+
+p = ggplot(data=df, aes(x=raw_r1_ch1, y= raw_r3_ch1))
+p = p + geom_point() +
+  labs(title = gsub("_", " ", gsub("2013-10-22platelist_", "", experiment)))
+print(p)
+
+p = ggplot(data=df, aes(x=raw_r4_ch1, y= raw_r5_ch1))
+p = p + geom_point() +
+  labs(title = gsub("_", " ", gsub("2013-10-22platelist_", "", experiment)))  
+print(p)
+
+p = ggplot(data=df, aes(x=raw_r1_ch1, y= raw_r5_ch1))
+p = p + geom_point(na.rm=TRUE) +
+  labs(title = gsub("_", " ", gsub("2013-10-22platelist_", "", experiment)))
+print(p)
+
+# plot all
+p = ggplot(data=melt(df, measure.vars=names(df)[grep("raw_r", names(df))]),
+           aes(x=concdrug1.micro_M., y=value, color=variable))
+p = p + facet_wrap(~identifier) +
+  scale_x_log10() +  
+  geom_point(na.rm=TRUE) + 
+  theme_bw() +
+  labs(title = gsub("_", " ", gsub("2013-10-22platelist_", "", experiment))) 
+print(p)
+
+p = ggplot(data=melt(df, 
+                     measure.vars=names(df)[grep("normalized_r", names(df))]),
+           aes(x=concdrug1.micro_M., y=value, color=variable))
+p = p + facet_wrap(~identifier) +
+  scale_x_log10() +  
+  geom_point(na.rm=TRUE) + 
+  theme_bw() +
+  labs(title = gsub("_", " ", gsub("2013-10-22platelist_", "", experiment)))  
+print(p)
+@
+
+\subsection{Interactions / Synergies}
+
+\subsubsection{Analysis functions}
+We first define the functions to calculated interactions and plot the results 
+for a given drug combination.
+
+For each drug combination we look for synergies at all used concentrations. The
+values for the drug combinations are compared with the expected values using
+either a multiplicative model (additive on log scale) or the HSA (highest single
+agent) model \cite{Tan2012, Borisy2003}.
+
+In terms of the multiplicative model the expected value is the sum of the
+individual inhibitions calculated on log transformed values.
+\begin{equation}
+  I_{combination} = I_{drug\,A} + I_{drug\,B}
+\end{equation}
+
+From the NPI values the inhibition is calculated by 1 - NPI
+\begin{equation}
+  I_{drug\,x} = 1 - NPI_{drug\,x}
+\end{equation}
+
+The function \Rcode{getExpectedValue} calucaltes these values from the data
+for the provided drug combination and type of interacton model.
+<<getExpectedValue, dependson = c(-1)>>=
+getExpectedValue <- function(df,
+                             position1,
+                             position2,
+                             drugNames,
+                             type=c("nonInteraction", "HSA")){
+  normCols = c("normalized_r1_ch1", 
+               "normalized_r2_ch1" , 
+               "normalized_r3_ch1", 
+               "normalized_r4_ch1" ,     
+               "normalized_r5_ch1")
+  normCols <- normCols[normCols %in% names(df)]
+  
+  if(type=="nonInteraction"){
+    tmp <- df[position1,]
+    tmp[,normCols] <- tmp[,normCols] + df[position2,normCols] - 1
+    tmp$identifier = "expected"
+    tmp$GeneID = gsub(drugNames[1], "expected", tmp$GeneID)
+    tmp$drug1 = gsub(drugNames[1], "expected", tmp$GeneID)
+    tmp$color = "white"
+  } else if(type=="HSA"){
+    ## test which single compound has the stronges mean effect and use this as expected
+    mean1 <- tapply(unlist(df[position1,normCols]), 
+                    rep(df$concdrug1.micro_M.[position1], length(normCols)), 
+                    mean, 
+                    na.rm=TRUE)
+    mean2 <- tapply(unlist(df[position2,normCols]), 
+                    rep(df$concdrug1.micro_M.[position2], length(normCols)), 
+                    mean, 
+                    na.rm=TRUE)
+    
+    ## take values of drug1 and exchange if drug2 shows a stronger effect for a conc
+    tmp <- df[position1,]
+    
+    concToChange <- names(mean1[mean1 > mean2])
+    
+    for(conc in concToChange){
+      concPos <- df$concdrug1.micro_M.[position2] == as.numeric(conc)
+      tmp[concPos,normCols] <- df[position2[concPos],normCols]
+    }
+    
+    tmp$identifier = "expected"
+    tmp$GeneID = gsub(drugNames[1], "expected", tmp$GeneID)
+    tmp$drug1 = gsub(drugNames[1], "expected", tmp$GeneID)
+    tmp$color = "white"
+  } else {
+    stop("type must be 'nonInteraction' or 'HSA'.")
+  }
+  
+  columnsToKeep <- c("plate", 
+                     normCols,
+                     "drug1",
+                     "concdrug1.micro_M.",
+                     "drug2",
+                     "concdrug2.micro_M.",
+                     "GeneID", 
+                     "identifier",
+                     "color")  
+  
+  invisible(melt(rbind(df, tmp)[,columnsToKeep], 
+             measure.vars=normCols))
+}   
+@
+
+
+To test for drug synergy we use a one-sided t-test to test if the inhibition of 
+the drug combination is stronger than the expected inhibition. This is done 
+independently for each concentration of a drug combination.
+<<testSynergy, dependson = c(-1)>>=
+testSynergy <- function(df, drugNames, summarizeWells=TRUE){
+  
+  if(summarizeWells){
+    ## summarize wells on the same plate
+    meanValue <- tapply(df$value, list(df$GeneID, df$variable, df$plate), 
+                        mean, na.rm=TRUE)
+    for(i in dimnames(meanValue)[[1]]){
+      for(j in dimnames(meanValue)[[2]]){
+        for(k in dimnames(meanValue)[[3]]){
+          selection <- df$GeneID == i &
+            df$variable == j & df$plate == k
+          if(sum(selection) > 0)
+            df$meanValue[selection] = meanValue[i, j, k]
+        }        
+      }
+    }
+    df$value = NULL
+    df = unique(df)
+    colnames(df) <- gsub("meanValue", "value", colnames(df))
+  }
+  
+  ## test synergy for each drug concentration
+  for(conc in unique(df$concdrug1.micro_M.)){
+    if(conc==0) next
+    dfConc = df[df$concdrug1.micro_M. == conc, ]
+    test = t.test(dfConc$value[dfConc$identifier == paste(drugNames[1],
+                                                          drugNames[2],
+                                                          sep="_")], 
+                  dfConc$value[dfConc$identifier == "expected"],
+                  alternative="less")
+    df$pvalue[df$concdrug1.micro_M. == conc] = test$p.value
+    df$combi_mean[df$concdrug1.micro_M. == conc] = test$estimate[1]
+    df$expected_mean[df$concdrug1.micro_M. == conc] = test$estimate[2]
+  }
+  ## set pvalue to 1 for 0 drug concentrations
+  df$pvalue[is.na(df$pvalue)] = 1
+  invisible(df)
+}
+
+@
+
+The values of individual replicates are summarized using the mean value and the 
+standard error of the mean. This data is used to visualize the results.
+<<getSummary, dependson = c(-1)>>=
+getSummary <- function(df){
+  ## calculate mean values and sem
+  ids = paste(df$concdrug1.micro_M., df$identifier)
+  
+  sem <- function(x, ...) sd(x, ...)/sqrt(sum(!is.na((x))))
+  
+  summary = data.frame(concdrug1.micro_M. = 
+                           as.vector(tapply(df$concdrug1.micro_M., 
+                                            ids,
+                                            unique)),
+                       identifier = as.vector(tapply(df$identifier, 
+                                                     ids,
+                                                     unique)),
+                       color = as.vector(tapply(df$color, 
+                                                ids,
+                                                unique)),
+                       pvalue = as.vector(tapply(df$pvalue, 
+                                                 ids,
+                                                 unique)),
+                       mean = as.vector(tapply(df$value, 
+                                               ids, 
+                                               mean, 
+                                               na.rm=TRUE)),
+                       sem = as.vector(tapply(df$value, 
+                                              ids, 
+                                              sem, 
+                                              na.rm=TRUE)),
+                       n = as.vector(tapply(!is.na(df$value), 
+                                            ids, 
+                                            sum)),
+                       stringsAsFactors=FALSE)
+                       
+  summary$identifier = as.factor(summary$identifier)
+  levels(summary$identifier) = levels(df$identifier)
+  summary$color = as.factor(summary$color)
+  levels(summary$color) = levels(df$color)
+  invisible(summary)
+}    
+@  
+
+The function \Rcode{analyseDrugCombi} calculates the expected values and 
+sumarizes the results across replicates the selected drug combination. 
+<<analyseDrugCombi, dependson = c(-1)>>=
+analyseDrugCombi <- function(df, combi, plotSingle=TRUE, type="nonInteraction"){
+
+  drugNames = unlist(strsplit(combi, "_"))
+  
+  ## select all wells beloning to the combination
+  df_sub = subset(df, 
+                  grepl(paste(c(paste(drugNames, collapse="_"), 
+                                paste0(drugNames, "_DMSO")), 
+                              collapse="|"), 
+                        df$identifier))
+  
+  ## head(df_sub)
+  df_sub <- df_sub[order(df_sub$GeneID),]
+  
+  position1 <- which(df_sub$identifier == paste0(drugNames[1], "_DMSO") & 
+                       !grepl("DMSO_0$|^DMSO_0", df_sub$GeneID))
+  position2 <- which(df_sub$identifier == paste0(drugNames[2], "_DMSO") & 
+                       !grepl("DMSO_0$|^DMSO_0", df_sub$GeneID))
+  
+  if(!identical(gsub(drugNames[1], "", df_sub$GeneID[position1]),
+                gsub(drugNames[2], "", df_sub$GeneID[position2])))
+    stop("single drug values do not match")
+  
+  ## add color information for plots
+  df_sub$color = "#5CBA48"
+  df_sub$color[position1] = "gray60"
+  df_sub$color[position2] = "gray30"    
+  
+  tmp <- getExpectedValue(df_sub,
+                          position1,
+                          position2,
+                          drugNames,
+                          type=type)
+  
+  ## manually set colors and order for plots
+  labelOrder = c(paste0(drugNames, "_DMSO"),
+                 "expected",
+                 paste(drugNames, collapse="_"))
+  tmp$identifier = factor(tmp$identifier, levels = labelOrder)
+  colorForPlot = c("gray60", "gray30", "white", "#5CBA48")
+  tmp$color = factor(tmp$color, levels= colorForPlot)
+  
+  tmp <- testSynergy(tmp, drugNames)
+  if(plotSingle) PGPC:::plotSingleValues(tmp, pthresh=0.05)
+
+  invisible(getSummary(tmp))
+}
+@
+
+\subsubsection{Investigating drug synergies}
+
+The data for the HCT cell lines and the drug combinations presented in the paper
+is shown in this section. For simplicity we only show the results for one drug
+combination. The other combinations can be visualized by uncommenting the other
+drug combinations.
+
+We first load the data from the cellHTS2 report.
+<<drugInteractions, dependson = c(-1)>>=
+experiment = "2013-10-22platelist_HCT_72_NPI_none"
+
+## get the dataframe and check the data in an explorative manner
+df = read.delim(file.path("result", experiment, "in", "topTable.txt"), 
+                stringsAsFactors=FALSE)
+df$identifier = paste(df$drug1, df$drug2, sep="_")
+df$concdrug1.micro_M. = round(df$concdrug1.micro_M., 4)
+
+## remove problematic replicate 4
+df <- df[, -grep("r4", names(df))]
+
+
+theme_new = theme_bw()
+theme_new$text$size = 20
+theme_new$axis.text$size = rel(1.2) 
+@
+
+
+<<figureLegends, echo=FALSE>>=
+Bendamustin_fig.cap = "Drug synergies for Bendamustine and AKT inhibitors calculated using an non-interacting model in the HCT116 parental cell line. Error bars, means +- s.e.m"
+Bendamustin_fig.subcap = c("Normalized viability values for all experiments.", 
+                           "Line plot of sumarized viability values for selected concentrations.",
+                           "Barplot of sumarized viability values for selected concentrations.",
+                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Figure 4 (b) in the paper.")
+
+BendamustinHSA_fig.cap = "Drug synergies for Bendamustine and AKT inhibitors calculated using the HSA model in the HCT116 parental cell line. Error bars, means +- s.e.m"
+BendamustinHSA_fig.subcap = c("Normalized viability values for all experiments.", 
+                           "Line plot of sumarized viability values for selected concentrations.",
+                           "Barplot of sumarized viability values for selected concentrations.",
+                           "Barplot of drug inhibition for selected concentrations.")
+
+Disulfiram_fig.cap = "Drug synergies for Disulfiram and MEK inhibitors calculated using an non-interacting model in the HCT116 parental cell line. Error bars, means +- s.e.m"
+Disulfiram_fig.subcap = c("Normalized viability values for all experiments.", 
+                           "Line plot of sumarized viability values for selected concentrations.",
+                           "Barplot of sumarized viability values for selected concentrations.",
+                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Figure 4 (d) in the paper.")
+
+DisulfiramHSA_fig.cap = "Drug synergies for Disulfiram and MEK inhibitors calculated using an non-interacting model in the HCT116 parental cell line. Error bars, means +- s.e.m"
+DisulfiramHSA_fig.subcap = c("Normalized viability values for all experiments.", 
+                           "Line plot of sumarized viability values for selected concentrations.",
+                           "Barplot of sumarized viability values for selected concentrations.",
+                           "Barplot of drug inhibition for selected concentrations.")
+ow = '.45\\textwidth'
+@
+
+
+
+First we look at the drug interactions for Bendamustin and Akt inhibitors using 
+the non-interacting model.
+
+We plot the distribution of the NPI values for single measurements, a line plot 
+and barplot of mean and sem values, and finally the mean inhibition and its sem
+as bar plot.
+<<drugInteractionsBendatmustin, dependson = c(-2), fig.show='hold', fig.cap=Bendamustin_fig.cap, fig.subcap=Bendamustin_fig.subcap, out.width=ow>>=
+drugCombis = c("Bendamustine_AKTi VIII")
+##drugCombis = c("Bendamustine_AKTi VIII", "Bendamustine_PD", "Bendamustine_U0126",
+##               "Bendamustine_MK2206")
+
+## for better overview we plot only a selection of concentrations  
+concentrations = c("1.25", "2.5", "5", "10")
+breaks = c(1,3,10)
+limits = c(1, 11)
+
+for (combi in drugCombis){
+  summary <- analyseDrugCombi(df, combi, plotSingle=TRUE)
+  
+  PGPC:::plotSummary(summary, 
+                            concentration=concentrations, 
+                            pthresh=0.05, 
+                            breaks=breaks, 
+                            limits=limits)
+  
+  PGPC:::plotSummaryBarplot(summary, 
+                                   concentration=concentrations, 
+                                   pthresh=0.05)
+  
+  PGPC:::plotSummaryBarplotInhibition(summary, 
+                                             concentration=concentrations, 
+                                             pthresh=0.05)
+} 
+@
+
+
+Here we show the results using the HSA model for the same drug combination.
+
+<<drugInteractionsBendatmustinHSA, dependson = c(-1), fig.show='hold', fig.cap=BendamustinHSA_fig.cap, fig.subcap=BendamustinHSA_fig.subcap, out.width=ow>>=
+for (combi in drugCombis){
+  summary <- analyseDrugCombi(df, combi, plotSingle=TRUE, type="HSA")
+  
+  PGPC:::plotSummary(summary, 
+                            concentration=concentrations, 
+                            pthresh=0.05, 
+                            breaks=breaks, 
+                            limits=limits)
+  
+  PGPC:::plotSummaryBarplot(summary, 
+                                   concentration=concentrations, 
+                                   pthresh=0.05)
+  
+  PGPC:::plotSummaryBarplotInhibition(summary, 
+                                             concentration=concentrations, 
+                                             pthresh=0.05)
+} 
+@
+
+
+Next we look at the drug interactions for Disulfiram and MEK inhibitors.
+First, we use the non-interacting model for estimating drug synergy.
+
+<<drugInteractionsDisulfiram, dependson = c(-1), fig.show='hold', fig.cap=Disulfiram_fig.cap, fig.subcap=Disulfiram_fig.subcap, out.width=ow>>=
+drugCombis = c("Disulfiram_PD")
+#drugCombis = c("Disulfiram_PD", "Disulfiram_U0126")
+
+## for better overview plot only a selection of concentrations  
+concentrations = c("0.0195", "0.0391","0.0781","0.1562")
+breaks = c(0.01, 0.03, 0.1, 0.3)
+limits=c (0.01, 0.5)
+
+for (combi in drugCombis){
+  summary <- analyseDrugCombi(df, combi, plotSingle=TRUE)
+  
+  PGPC:::plotSummary(summary, 
+                            concentration=concentrations, 
+                            pthresh=0.05, 
+                            breaks=breaks, 
+                            limits=limits)
+  
+  PGPC:::plotSummaryBarplot(summary, 
+                                   concentration=concentrations, 
+                                   pthresh=0.05)
+  
+  PGPC:::plotSummaryBarplotInhibition(summary, 
+                                             concentration=concentrations, 
+                                             pthresh=0.05)
+} 
+@
+
+And second, we use the HSA model for estimating drug synergy.
+
+<<drugInteractionsDisulfiramHSA, dependson = c(-1), fig.show='hold', fig.cap=DisulfiramHSA_fig.cap, fig.subcap=DisulfiramHSA_fig.subcap, out.width=ow>>=
+for (combi in drugCombis){
+  summary <- analyseDrugCombi(df, combi, plotSingle=TRUE, type="HSA")
+  
+  PGPC:::plotSummary(summary, 
+                            concentration=concentrations, 
+                            pthresh=0.05, 
+                            breaks=breaks, 
+                            limits=limits)
+  
+  PGPC:::plotSummaryBarplot(summary, 
+                                   concentration=concentrations, 
+                                   pthresh=0.05)
+  
+  PGPC:::plotSummaryBarplotInhibition(summary, 
+                                             concentration=concentrations, 
+                                             pthresh=0.05)
+} 
+@
+
+<<figureLegends2, echo=FALSE>>=
+BendamustinDLD_fig.cap = "Drug synergies for Bendamustine and AKT inhibitors calculated using an non-interacting model in the DLD-1 cell line. Error bars, means +- s.e.m"
+BendamustinDLD_fig.subcap = c("Normalized viability values for all experiments.", 
+                           "Line plot of sumarized viability values for selected concentrations.",
+                           "Barplot of sumarized viability values for selected concentrations.",
+                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Supplementary Figure 11 (c) in the paper.")
+
+BendamustinDLDHSA_fig.cap = "Drug synergies for Bendamustine and AKT inhibitors calculated using the HSA model in the DLD-1 cell line. Error bars, means +- s.e.m"
+BendamustinDLDHSA_fig.subcap = c("Normalized viability values for all experiments.", 
+                           "Line plot of sumarized viability values for selected concentrations.",
+                           "Barplot of sumarized viability values for selected concentrations.",
+                           "Barplot of drug inhibition for selected concentrations.")
+
+DisulfiramDLD_fig.cap = "Drug synergies for Disulfiram and MEK inhibitors calculated using an non-interacting model in the DLD-1 cell line. Error bars, means +- s.e.m"
+DisulfiramDLD_fig.subcap = c("Normalized viability values for all experiments.", 
+                           "Line plot of sumarized viability values for selected concentrations.",
+                           "Barplot of sumarized viability values for selected concentrations.",
+                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Supplementary Figure 11 (h) in the paper.")
+
+DisulfiramDLDHSA_fig.cap = "Drug synergies for Disulfiram and MEK inhibitors calculated using an non-interacting model in the DLD-1 cell line. Error bars, means +- s.e.m"
+DisulfiramDLDHSA_fig.subcap = c("Normalized viability values for all experiments.", 
+                           "Line plot of sumarized viability values for selected concentrations.",
+                           "Barplot of sumarized viability values for selected concentrations.",
+                           "Barplot of drug inhibition for selected concentrations.")
+@
+
+
+
+\subsubsection{Investigating drug synergies, DLD cell line}
+
+The data for the DLD cell lines and the drug combinations presented in 
+supplemental Figures is shown in this section. It is analogous to the analysis
+of the HCT116 celline in the previous section.
+
+We first load the data from the cellHTS2 report.
+<<drugInteractionsDLD, dependson = c(-2)>>=
+experiment = "2013-10-22platelist_DLD_72_NPI_none"
+
+## get the dataframe and check the data in an explorative manner
+df = read.delim(file.path("result", experiment, "in", "topTable.txt"), 
+                stringsAsFactors=FALSE)
+df$identifier = paste(df$drug1, df$drug2, sep="_")  
+df$concdrug1.micro_M. = round(df$concdrug1.micro_M., 4)
+
+theme_new = theme_bw()
+theme_new$text$size = 20
+theme_new$axis.text$size = rel(1.2) 
+@
+
+
+First we look at the drug interactions for Bendamustin and Akt inhibitors using
+the non-interacting model.
+
+<<drugInteractionsDLDBendatmustin, dependson = c(-1), fig.show='hold', fig.cap=BendamustinDLD_fig.cap, fig.subcap=BendamustinDLD_fig.subcap, out.width=ow>>=
+drugCombis = c("Bendamustine_AKTi VIII")
+## drugCombis = c("Bendamustine_AKTi VIII", "Bendamustine_PD", "Bendamustine_U0126",
+##                "Bendamustine_MK2206")
+
+
+## for better overview plot only a selection of concentrations  
+concentrations = c("1.25", "2.5", "5", "10")
+breaks = c(1,3,10)
+limits = c(1, 11)
+
+for (combi in drugCombis){
+  summary <- analyseDrugCombi(df, combi, plotSingle=TRUE)
+  
+  PGPC:::plotSummary(summary, 
+                            concentration=concentrations, 
+                            pthresh=0.05, 
+                            breaks=breaks, 
+                            limits=limits)
+  
+  PGPC:::plotSummaryBarplot(summary, 
+                                   concentration=concentrations, 
+                                   pthresh=0.05)
+  
+  PGPC:::plotSummaryBarplotInhibition(summary, 
+                                             concentration=concentrations, 
+                                             pthresh=0.05, 
+                                             ylimits=c(-0.05,.6))
+} 
+@
+
+And next using the HSA model for Bendamustin and the Akt inhibitors.
+
+<<drugInteractionsDLDBendatmustinHSA, dependson = c(-1), fig.show='hold', fig.cap=BendamustinDLDHSA_fig.cap, fig.subcap=BendamustinDLDHSA_fig.subcap, out.width=ow>>=
+for (combi in drugCombis){
+  summary <- analyseDrugCombi(df, combi, plotSingle=TRUE, type="HSA")
+  
+  PGPC:::plotSummary(summary, 
+                            concentration=concentrations, 
+                            pthresh=0.05, 
+                            breaks=breaks, 
+                            limits=limits)
+  
+  PGPC:::plotSummaryBarplot(summary, 
+                                   concentration=concentrations, 
+                                   pthresh=0.05)
+  
+  PGPC:::plotSummaryBarplotInhibition(summary, 
+                                             concentration=concentrations, 
+                                             pthresh=0.05, 
+                                             ylimits=c(-0.05,.6))
+} 
+@
+
+
+Next we look at the drug interactions for Disulfiram and MEK inhibitors using
+the non-interacting model.
+
+<<drugInteractionsDLDDisulfiram, dependson = c(-1), fig.show='hold', fig.cap=DisulfiramDLD_fig.cap, fig.subcap=DisulfiramDLD_fig.subcap, out.width=ow>>=
+drugCombis = c("Disulfiram_PD")
+##drugCombis = c("Disulfiram_PD", "Disulfiram_U0126")
+
+
+
+## for better overview plot only a selection of concentrations  
+concentrations = c("0.0195", "0.0391","0.0781","0.1562")
+breaks = c(0.01, 0.03, 0.1, 0.3)
+limits=c (0.01, 0.5)
+
+for (combi in drugCombis){
+  summary <- analyseDrugCombi(df, combi, plotSingle=TRUE)
+  
+  PGPC:::plotSummary(summary, 
+                            concentration=concentrations, 
+                            pthresh=0.05, 
+                            breaks=breaks, 
+                            limits=limits)
+  
+  PGPC:::plotSummaryBarplot(summary, 
+                                   concentration=concentrations, 
+                                   pthresh=0.05)
+  
+  PGPC:::plotSummaryBarplotInhibition(summary, 
+                                             concentration=concentrations, 
+                                             pthresh=0.05)
+} 
+@
+
+And finally we use the HSA model for Disulfiram and the MEK inhibitors.
+
+<<drugInteractionsDLDDisulfiramHSA, dependson = c(-1), fig.show='hold', fig.cap=DisulfiramDLDHSA_fig.cap, fig.subcap=DisulfiramDLDHSA_fig.subcap, out.width=ow>>=
+for (combi in drugCombis){
+  summary <- analyseDrugCombi(df, combi, plotSingle=TRUE, type="HSA")
+  
+  PGPC:::plotSummary(summary, 
+                            concentration=concentrations, 
+                            pthresh=0.05, 
+                            breaks=breaks, 
+                            limits=limits)
+  
+  PGPC:::plotSummaryBarplot(summary, 
+                                   concentration=concentrations, 
+                                   pthresh=0.05)
+  
+  PGPC:::plotSummaryBarplotInhibition(summary, 
+                                             concentration=concentrations, 
+                                             pthresh=0.05)
+} 
+@

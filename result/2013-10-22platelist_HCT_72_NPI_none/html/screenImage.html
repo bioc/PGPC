@@ -1,0 +1,180 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+<html>
+  <head>
+    <title>
+      cellHTS2 Experiment Report
+    </title>
+    <link rel="stylesheet" href="./cellHTS.css" type="text/css">
+    <script type="text/javascript" src="./cellHTS.js"></script>
+    <script src="./sorttable.js"></script>
+   </head>
+   <body onload="initialize();">
+     <script type="text/javascript" src="./wz_tooltip.js"></script>
+
+            <table class="imageStack" align="center">
+              
+              <tr>
+                <td class="tabs">
+
+    <div class="tab small">
+      <table class="bar small">
+	<tr>
+	  <td class="topbar">
+	  </td>
+	</tr>
+	<tr>
+	  <td class="bar">
+	  </td>
+	</tr>
+      </table>
+      <table class="tabs">
+	<tr>
+	  <td>
+
+	    <table class="small selected imageScreenReplicate" onClick="toggleTabByReplicate('imageScreenReplicate', this, 1) "  onmouseover="Tip('Image plot of assay scores, startified by plates. This will be clickable if the `map` argument was set to TRUE.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();"">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Scores
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+	    <table class="small unselected imageScreenReplicate" onClick="toggleTabByReplicate('imageScreenReplicate', this, 2) "  onmouseover="Tip('Normal Q-Q plot of assay scores. Deviations from the line indicate non-normally distributed values.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();"">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Q-Q Plot
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+	    <table class="small unselected imageScreenReplicate" onClick="toggleTabByReplicate('imageScreenReplicate', this, 3) "  onmouseover="Tip('Density plot of the assay score distribution.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();"">
+	      <tr>
+		<td class="left">
+		  &nbsp&nbsp
+		</td>
+		<td class="middle">
+                  <span>
+		     Distribution
+                  </span>
+		</td>
+		<td class="right">
+		  &nbsp&nbsp		
+		</td>
+	      </tr>
+	    </table>
+
+           </td>
+	</tr>
+      </table>
+    </div>
+
+              </td>
+            </tr>
+            <tr>
+              <td>
+
+
+                <table class="image  visible imageScreen channel1 replicate1" align="center">
+                  <tr>
+                    <td class="header">
+                      <div class="header">
+	                Screen-wide image plot of the scored values
+                      </div>
+                      <div class="caption">
+	                
+                      </div>
+                    </td>
+                  </tr>
+
+               <tr>
+                    <td class="main">
+                      <img class="image" src="imageScreen.png" >
+                        
+                     </td>
+                  </tr>
+                  <tr>
+                    <td class="pdf">
+                      <span class="pdf" onClick="linkToPdf('imageScreen.pdf');" onmouseover="Tip('Pdf version of the image.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+                        pdf
+                      </span>
+                    </td>
+                  </tr>
+</table>
+
+
+                <table class="image  invisible imageScreen channel1 replicate2" align="center">
+                  <tr>
+                    <td class="header">
+                      <div class="header">
+	                Normal Q-Q Plot
+                      </div>
+                      <div class="caption">
+	                
+                      </div>
+                    </td>
+                  </tr>
+
+               <tr>
+                    <td class="main">
+                      <img class="image" src="qqplot.png" >
+                        <div class="scatterLegend"><font color="black">sample: 660</font>&nbsp&nbsp&nbsp<font color="#377EB8">neg: 96</font>&nbsp&nbsp&nbsp<font color="#E41A1C">pos: 12</font></div>
+                     </td>
+                  </tr>
+                  <tr>
+                    <td class="pdf">
+                      <span class="pdf" onClick="linkToPdf('qqplot.pdf');" onmouseover="Tip('Pdf version of the image.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+                        pdf
+                      </span>
+                    </td>
+                  </tr>
+</table>
+
+
+                <table class="image  invisible imageScreen channel1 replicate3" align="center">
+                  <tr>
+                    <td class="header">
+                      <div class="header">
+	                Density Distribution
+                      </div>
+                      <div class="caption">
+	                
+                      </div>
+                    </td>
+                  </tr>
+
+               <tr>
+                    <td class="main">
+                      <img class="image" src="density.png" >
+                        <div class="scatterLegend"><font color="black">sample: 660</font>&nbsp&nbsp&nbsp<font color="#377EB8">neg: 96</font>&nbsp&nbsp&nbsp<font color="#E41A1C">pos: 12</font></div>
+                     </td>
+                  </tr>
+                  <tr>
+                    <td class="pdf">
+                      <span class="pdf" onClick="linkToPdf('density.pdf');" onmouseover="Tip('Pdf version of the image.', WIDTH, 250, TITLE, '', OFFSETX, 1);" onmouseout="UnTip();">
+                        pdf
+                      </span>
+                    </td>
+                  </tr>
+</table>
+
+              </tr>
+            </td>  
+          </table>
+  </body>
+</html>

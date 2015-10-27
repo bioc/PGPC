@@ -1,0 +1,27 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+<html>
+  <head>
+    <title>
+      Glossary
+    </title>
+    <link rel="stylesheet" href="./cellHTS.css" type="text/css">
+    <script type="text/javascript" src="./cellHTS.js"></script>
+    <script src="./sorttable.js"></script>
+   </head>
+   <body onload="initialize();">
+     <script type="text/javascript" src="./wz_tooltip.js"></script>
+<center><h1>Glossary</h1></center><br/>
+<center><table border="0">
+<tr>
+<td class="odd term" width="25%">Average dynamic range</td><td class="odd" width="75%">The average dynamic range is the mean of the replicate dynamic ranges (see below) for the plate over all the replicates.</td></tr>
+<tr>
+<td class="even term">Replicate dynamic range</td><td class="even">The replicate dynamic range provides an indicator of the gap between the positive and the negative controls.<br/><br/>Depending on the value of the "scale" attribute from the "summarizePlate" function, the replicate dynamic range is either: <br/>- the difference between the arithmetic average on positive and negative controls <br/>- the ratio between the geometric averages on positive and negative controls.<br/><br/>By default the choice is based on the scale of the data: if the scale is positive, then it is the ratio of geometric average, otherwise, it is the difference of arithmetic averages.</td></tr>
+<tr>
+<td class="odd term">Repeatability standard deviation</td><td class="odd">The repeatability standard deviation is the standard deviation for the random variable 'standard deviation for a gene across all the replicates'. It is used to determine if the results for each replicate are similar or not. <br/><br/>0 is the perfect score, whereas a high value means the results are very different.</td></tr>
+<tr>
+<td class="even term">Spearman rank correlation</td><td class="even">The Spearman rank correlation coefficient is a mesure of correlation between two replicates. <br/><br/>A result close to zero means there is no correlation between the two replicates, whereas a result close to 1 means there is a strong correlation between them.</td></tr>
+<tr>
+<td class="odd term">Spearman rank correlation (min - max)</td><td class="odd">This values correspond to the min and the max of the Spearman rank correlation among replicates.</td></tr>
+</table>
+</center>  </body>
+</html>

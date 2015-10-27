@@ -1,0 +1,254 @@
+%\VignetteIndexEntry{Feature selection and calculation of interactions}
+%\VignetteEngine{knitr::knitr}
+<<echo=FALSE, cache=FALSE, message=FALSE>>=
+knitr::set_parent(file.path('..', 'PGPC.Rnw'))
+library(PGPC)
+if(!file.exists(file.path("result","data")))
+  dir.create(file.path("result","data"),recursive=TRUE)
+@
+
+\section{Feature selection and calculation of interactions}
+
+\subsection{Quality control of features}
+
+To assess the reproducibility of a feature, we calculate the correlation of each
+feature from the replicates.
+<<loadDatamatrixTransformed, echo=FALSE>>=
+if(!exists("datamatrixTransformed")){
+  data("datamatrixTransformed", package="PGPC")
+}
+@
+
+<<qualityControlFeatures1, cache=TRUE, dependson = c(-1)>>=
+getCorrelation <- function(d){
+  df <- do.call(rbind, 
+             lapply(seq_along(d$anno$ftr), 
+                    function(i) {
+                      data.frame(name=d$anno$ftr[i], 
+                                             cor=cor(c(d$D[,,1,i]), 
+                                               c(d$D[,,2,i]),
+                                               use="pairwise.complete.obs"),
+                                             stringsAsFactors=FALSE)
+                    }           
+                    )
+                )
+  df
+}
+correlation = getCorrelation(datamatrixTransformed)
+correlation = correlation[order(correlation$cor, decreasing=TRUE),]
+@
+
+<<correlation1, fig.cap=c("Correlation of features. This figure is the basis for Figure 1 (b) in the paper."), cache=TRUE, dependson = c(-1), dev.args=list(pointsize=16)>>=
+selection = c("n", "nseg.dna.m.eccentricity.qt.0.01", "nseg.0.m.cx.mean")
+
+plot(1:nrow(correlation),
+     correlation$cor, 
+     ylab="correlation coefficient", 
+     xlab="feature",
+     pch=20)
+abline(h=0.7)
+points(which(correlation$name %in% selection),
+       correlation$cor[correlation$name %in% selection], 
+       pch=19,
+       col=c(2,3,4))
+legend("bottomleft", legend=selection, col=c(2,3,4), pch=19, cex=0.6)
+@
+
+In Figure \ref{fig:correlation1} feature correlations are plotted in
+decreasing order. \Sexpr{selection} are highlighted and scatter plots of these
+features are shown as well in Figure \ref{fig:singleFeatureCorrelation}.
+
+
+<<singleFeatureCorrelation, fig.cap=c("Correlation of feature n, nseg.dna.m.eccentricity.qt.0.01 and nseg.0.m.cx.mean"), cache=TRUE, dependson = c(-1), fig.show='hold', resize.width="0.3\\textwidth">>=
+for (i in seq_along(selection)){
+  plot(c(datamatrixTransformed$D[,,1,match(selection[i], 
+                                           datamatrixTransformed$anno$ftr)]), 
+       c(datamatrixTransformed$D[,,2,match(selection[i], 
+                                           datamatrixTransformed$anno$ftr)]),
+       xlab="replicate 1",
+       ylab="replicate 2",
+       main = selection[i],
+       pch=20,
+       col="#00000033",
+       asp=1)
+}
+@
+
+Features with a correlation lower than 0.7 were removed from further analysis.
+
+<<correlation3, eval=TRUE, cache=TRUE, dependson = c(-1)>>=
+## remove columns with low correlation or few levels
+remove = correlation$name[correlation$cor < 0.7]
+
+
+D = datamatrixTransformed$D[,,, -match(remove, datamatrixTransformed$anno$ftr)]
+anno = datamatrixTransformed$anno
+anno$ftr = anno$ftr[-match(remove, anno$ftr)]
+
+datamatrixFiltered = list(D=D, anno=anno)
+save(datamatrixFiltered, 
+     file=file.path("result","data","datamatrixFiltered.rda"), 
+     compress="xz")
+rm(datamatrixTransformed)
+@
+
+The data are now represented in the 
+\Sexpr{length(dim(datamatrixFiltered$D))}-dimensional array \Robject{D} with
+dimensions
+\begin{center}
+\begin{tabular}{lrrl}
+& \Sexpr{dim(datamatrixFiltered$D)[1]} & chemical compounds \\
+$\times$ & \Sexpr{dim(datamatrixFiltered$D)[2]} & cell line \\
+$\times$ & \Sexpr{dim(datamatrixFiltered$D)[3]} & biological replicate \\
+$\times$ & \Sexpr{dim(datamatrixFiltered$D)[4]} & phenotypic features \\
+\end{tabular}
+\end{center}
+
+\subsection{Feature selection by stability}
+
+The data contains features that are partially redundant. Therefore we aim to 
+select the features that contain the least redundant information. As first step
+we center and scale the features, using the median as a measure of location and 
+the median absolute deviation as a measure of spread. The features are selected
+as described by Laufer et al. \cite{Laufer2013} starting with cell number as 
+first selected feature.
+
+<<stabilitySelection1, eval=FALSE, cache=TRUE>>=
+D = apply(datamatrixFiltered$D, 
+          2:4, 
+          function(x) { (x - median(x,na.rm=TRUE)) / mad(x, na.rm=TRUE) } )
+D[!is.finite(D)] = 0
+dim(D) = c(prod(dim(D)[1:2]),2,dim(D)[4])
+
+forStabilitySelection = list(D=D, 
+                             Sample = 1:prod(dim(D)[1:2]), 
+                             phenotype = datamatrixFiltered$anno$ftr)
+
+preselect=c("n")
+
+selected <- PGPC:::selectByStability(forStabilitySelection, 
+                                            preselect, 
+                                            Rdim=40)
+save(selected, file=file.path("result","data","selected.rda"), compress="xz")
+@
+The result \Robject{selected} is available from the package and can be loaded 
+by \Robject{data("selected", package="PGPC")}.
+
+The result of the feature selection is shown in Figures 
+\ref{fig:featureSelection1_} and \ref{fig:featureSelection2_}. The first figure 
+shows the correlations of the fit residuals for the feature selected at each
+step and the second figure shows the fraction of features for which the fit 
+residuals are positively correlated.
+
+<<featureSelection1_, fig.cap=c("Correlation of selected feature after subtraction of the information containted in the previously selected features."), cache=TRUE, fig.width=6.3, fig.height=4.2, dev.args=list(pointsize=8), dependson = c(-2)>>=
+if(!exists("selected")){
+  data("selected", package="PGPC")
+} else {
+  PGPC:::checkConsistency("selected")
+}
+
+selectedFtrs = selected$selected
+correlation = selected$correlation
+ratioPositive = selected$ratioPositive
+
+par(mfrow=c(2,1))
+barplot(correlation, 
+        names.arg=PGPC:::hrNames(selectedFtrs), 
+        las=2,
+        col = ifelse(ratioPositive > 0.5, 
+                     brewer.pal(3,"Pastel1")[2], brewer.pal(3,"Pastel1")[1]),
+        ylab = "information gain")
+
+<<featureSelection2_, fig.cap=c("Fraction of positive correlations. This figure is the basis for Figure 1 (c) and Supplementary Figure 3 (a) in the paper."), cache=TRUE, fig.width=6.3, fig.height=4.2, dev.args=list(pointsize=8), dependson = c(-1)>>=
+par(mfrow=c(2,1))
+barplot(ratioPositive-0.5, 
+        names.arg=PGPC:::hrNames(selectedFtrs), 
+        las=2,
+        col = ifelse(ratioPositive > 0.5, 
+                     brewer.pal(3,"Pastel1")[2], brewer.pal(3,"Pastel1")[1]),
+        offset=0.5,
+        ylab = "fraction positive correlated")
+#abline(a=0.5,0)
+
+selectedFtrs=selectedFtrs[ratioPositive > 0.5]
+
+D = datamatrixFiltered$D[,,,match(selectedFtrs, datamatrixFiltered$anno$ftr)]
+anno = datamatrixFiltered$anno
+anno$ftr = anno$ftr[match(selectedFtrs, anno$ftr)]
+
+datamatrixSelected = list(D=D, anno=anno)
+save(datamatrixSelected, 
+     file=file.path("result","data","datamatrixSelected.rda"),
+     compress="xz")
+@
+
+The feature selection algorithm selected \Sexpr{length(selectedFtrs)} features
+which are kept for further analysis.
+
+The final data are now represented in the 
+\Sexpr{length(dim(datamatrixSelected$D))}-dimensional array \Robject{D} with 
+dimensions
+\begin{center}
+\begin{tabular}{lrrl}
+& \Sexpr{dim(datamatrixSelected$D)[1]} & chemical compounds \\
+$\times$ & \Sexpr{dim(datamatrixSelected$D)[2]} & cell line \\
+$\times$ & \Sexpr{dim(datamatrixSelected$D)[3]} & biological replicate \\
+$\times$ & \Sexpr{dim(datamatrixSelected$D)[4]} & phenotypic features
+\end{tabular}
+\end{center}
+
+\subsection{Calculation of interactions}
+
+Te cell number is scaled to the dynamic range between positive (Paclitaxel) 
+and negative controls (DMSO) for each cell line and replicate, to account for 
+the different proliferation rates of the cell lines. For this purpose the median
+of the control wells is calculated and used for the scaling of cell number.
+<<calculateInteractions1_, eval=TRUE, cache=TRUE, results='hide', echo=TRUE, dependson = c(-1), dev.args=list(pointsize=16), fig.show='hold'>>=
+neg = grepl("neg", datamatrixSelected$anno$drug$GeneID)
+pos = grepl("Paclitaxel", datamatrixSelected$anno$drug$GeneID)
+
+negMedians = apply(datamatrixSelected$D[neg,,,1], c(2,3), median)
+posMedians = apply(datamatrixSelected$D[pos,,,1], c(2,3), median)
+
+Nnorm = (datamatrixSelected$D[,,,1] - rep(posMedians, 
+                                          each=dim(datamatrixSelected$D)[1])) / 
+      (rep(negMedians, each=dim(datamatrixSelected$D)[1]) - 
+         rep(posMedians, each=dim(datamatrixSelected$D)[1]))
+
+datamatrixSelected$D[,,,1] <- Nnorm
+
+
+plot(c(datamatrixSelected$D[!(neg | pos),,1,1]), 
+     c(datamatrixSelected$D[!(neg | pos),,2,1]),
+     xlab="replicate 1",
+     ylab="replicate 2",
+     main = "n",
+     pch=20,
+     col="grey",
+     asp=1)
+points(c(datamatrixSelected$D[pos,,1,1]), 
+     c(datamatrixSelected$D[pos,,2,1]),
+     col=2,
+     pch=20)
+points(c(datamatrixSelected$D[neg,,1,1]), 
+     c(datamatrixSelected$D[neg,,2,1]),
+     col=4,
+     pch=20)
+@
+
+We use an additive model on glog-transformed data to calculate interactions
+following previous approaches \cite{Mani2008, Costanzo2010, Horn2011, Laufer2013}.
+The fit is implemented using the \Robject{medpolish} function, which fits an 
+additive model using Tukey's median polish procedure. The residuals from this
+fit represent the interactions.
+<<calculateInteractions2_, cache=TRUE, results='hide', echo=TRUE, dependson = c(-1)>>=
+interactions = getInteractions(datamatrixSelected, 
+                               datamatrixSelected$anno$ftr, 
+                               eps = 1e-4, 
+                               maxiter = 100) 
+save(interactions, 
+     file=file.path("result","data", "interactions.rda"), compress="xz")
+
+## check consistency
+PGPC:::checkConsistency("interactions")
+@
