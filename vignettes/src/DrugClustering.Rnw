@@ -126,7 +126,7 @@ heatmap.2(PIdist,
           Rowv = hcInt,
           trace="none",
           col=colorRampPalette(c("darkblue", "white"))(64),
-          breaks = c(seq(0,0.6,length.out=64),0.6),
+          breaks = c(seq(0,0.5999,length.out=64),0.6),
           cexRow=.15,
           cexCol=.15)
 @
@@ -172,7 +172,7 @@ heatmap.2(PIdist,
           Rowv = hcInt,
           trace="none",
           col=colorRampPalette(c("darkblue", "white"))(64),
-          breaks = c(seq(0,0.6,length.out=64),0.6),
+          breaks = c(seq(0,0.5999,length.out=64),0.6),
           cexRow=.15,
           cexCol=.15,
           RowSideColors=col)
@@ -368,7 +368,7 @@ heatmap.2(singleDist,
           Rowv = hcsingleDist,
           trace="none",
           col=colorRampPalette(c("darkblue", "white"))(64),
-          breaks = c(seq(0,0.6,length.out=64),0.6))
+          breaks = c(seq(0,0.5999,length.out=64),0.6))
 @
 
 Next the heatmap for single cell line is ordered by the dendrogram obtained
@@ -380,7 +380,7 @@ heatmap.2(singleDist,
           Rowv = hcInt,
           trace="none",
           col=colorRampPalette(c("darkblue", "white"))(64),
-          breaks = c(seq(0,0.6,length.out=64),0.6))
+          breaks = c(seq(0,0.5999,length.out=64),0.6))
 @
 
 \subsection{Clustering of interaction profiles using the filtered cell number as feature.}
@@ -402,7 +402,7 @@ heatmap.2(justNDist,
           Rowv = hcjustNDist,
           trace="none",
           col=colorRampPalette(c("darkblue", "white"))(64),
-          breaks = c(seq(0,0.6,length.out=64),0.6))
+          breaks = c(seq(0,0.5999,length.out=64),0.6))
 @
 
 Next the heatmap for only cell number is ordered by the dendrogram obtained
@@ -414,7 +414,7 @@ heatmap.2(justNDist,
           Rowv = hcInt,
           trace="none",
           col=colorRampPalette(c("darkblue", "white"))(64),
-          breaks = c(seq(0,0.6,length.out=64),0.6))
+          breaks = c(seq(0,0.5999,length.out=64),0.6))
 @
 
 

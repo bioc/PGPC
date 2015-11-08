@@ -81,7 +81,7 @@ heatmap.2(celllineDist,
           Rowv = as.dendrogram(hc),
           trace="none",
           col=colorRampPalette(c("darkblue", "white"))(64),
-          breaks = c(seq(0,0.6,length.out=64),0.6),
+          breaks = c(seq(0,0.5999,length.out=64),0.6),
           margin=c(9,9))
 
 tmp = par(mar=c(5, 4, 4, 10) + 0.1)
@@ -141,7 +141,7 @@ heatmap.2(celllineDist,
           Rowv = hccelllineDist,
           trace="none",
           col=colorRampPalette(c("darkblue", "white"))(64),
-          breaks = c(seq(0,0.6,length.out=64),0.6),
+          breaks = c(seq(0,0.5999,length.out=64),0.6),
           margin=c(9,9))
 
 tmp = par(mar=c(5, 4, 4, 10) + 0.1)
