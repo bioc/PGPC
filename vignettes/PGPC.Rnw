@@ -25,7 +25,6 @@ BiocStyle::latex()
 \bioctitle[PGCP, 2014]{\textsf{\textbf{A chemical-genetic interaction map of
 small molecules using high-throughput imaging in cancer cells}\\
 Marco Breinig, Felix A. Klein, Wolfgang Huber and Michael Boutros\\
-
 Accepted for publication at Molecular Systems Biology}}
 
 \author{Felix A. Klein \\[1em] European Molecular Biology Laboratory (EMBL),
