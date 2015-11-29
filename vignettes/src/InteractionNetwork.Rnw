@@ -8,15 +8,15 @@ if(!file.exists(file.path("result")))
 @
 
 <<figureLabelsInteractionNetwork, cache=TRUE, echo=FALSE>>=
-totalInt_fig.cap = c("Total number of interactions per cell line. This figure is the basis for Figure 2 (e) in the paper.")
+totalInt_fig.cap = c("Total number of interactions per cell line. This figure is the basis for Figure 2E in the paper.")
 
-drugInt_fig.cap = c("Number of drugs with at least one specific interaction per cell line. This figure is the basis for Figure 2 (f) in the paper.")
+drugInt_fig.cap = c("Number of drugs with at least one specific interaction per cell line.")
 
-pleDeg_fig.cap = c("Pleiotropic degree per cell line. This figure is the basis for Figure 2 (d) in the paper.")
+pleDeg_fig.cap = c("Pleiotropic degree per cell line. This figure is the basis for Figure 2D in the paper.")
 
 intFtr_fig.cap = c("Distributions and overlap of interactions per feature")
-intFtr_fig.subcap = c("Total interactions per feature. This figure is the basis for Supplementary Figure 10 (a) in the paper.",
-                 "Overlap of interactions in the 5 phenotypic classes. This figure is the basis for Figure 2 (c) in the paper.",
+intFtr_fig.subcap = c("Total interactions per feature.",
+                 "Overlap of interactions in the 5 phenotypic classes. This figure is the basis for Figure 2C in the paper.",
                  "Overlap of interactions in the 5 phenotypic classes shown as bar plots.")
 
 ow = '.45\\textwidth'

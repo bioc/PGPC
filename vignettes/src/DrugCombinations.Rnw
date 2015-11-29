@@ -397,7 +397,7 @@ Bendamustin_fig.cap = "Drug synergies for Bendamustine and AKT inhibitors calcul
 Bendamustin_fig.subcap = c("Normalized viability values for all experiments.", 
                            "Line plot of sumarized viability values for selected concentrations.",
                            "Barplot of sumarized viability values for selected concentrations.",
-                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Figure 4 (b) in the paper.")
+                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Figure 4B in the paper.")
 
 BendamustinHSA_fig.cap = "Drug synergies for Bendamustine and AKT inhibitors calculated using the HSA model in the HCT116 parental cell line. Error bars, means +- s.e.m"
 BendamustinHSA_fig.subcap = c("Normalized viability values for all experiments.", 
@@ -409,7 +409,7 @@ Disulfiram_fig.cap = "Drug synergies for Disulfiram and MEK inhibitors calculate
 Disulfiram_fig.subcap = c("Normalized viability values for all experiments.", 
                            "Line plot of sumarized viability values for selected concentrations.",
                            "Barplot of sumarized viability values for selected concentrations.",
-                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Figure 4 (d) in the paper.")
+                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Figure 4D in the paper.")
 
 DisulfiramHSA_fig.cap = "Drug synergies for Disulfiram and MEK inhibitors calculated using an non-interacting model in the HCT116 parental cell line. Error bars, means +- s.e.m"
 DisulfiramHSA_fig.subcap = c("Normalized viability values for all experiments.", 
@@ -538,7 +538,7 @@ BendamustinDLD_fig.cap = "Drug synergies for Bendamustine and AKT inhibitors cal
 BendamustinDLD_fig.subcap = c("Normalized viability values for all experiments.", 
                            "Line plot of sumarized viability values for selected concentrations.",
                            "Barplot of sumarized viability values for selected concentrations.",
-                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Supplementary Figure 11 (c) in the paper.")
+                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Expanded view Figure EV3C in the paper.")
 
 BendamustinDLDHSA_fig.cap = "Drug synergies for Bendamustine and AKT inhibitors calculated using the HSA model in the DLD-1 cell line. Error bars, means +- s.e.m"
 BendamustinDLDHSA_fig.subcap = c("Normalized viability values for all experiments.", 
@@ -550,7 +550,7 @@ DisulfiramDLD_fig.cap = "Drug synergies for Disulfiram and MEK inhibitors calcul
 DisulfiramDLD_fig.subcap = c("Normalized viability values for all experiments.", 
                            "Line plot of sumarized viability values for selected concentrations.",
                            "Barplot of sumarized viability values for selected concentrations.",
-                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Supplementary Figure 11 (h) in the paper.")
+                           "Barplot of drug inhibition for selected concentrations. This figure is the basis of Expanded View Figure EV3H in the paper.")
 
 DisulfiramDLDHSA_fig.cap = "Drug synergies for Disulfiram and MEK inhibitors calculated using an non-interacting model in the DLD-1 cell line. Error bars, means +- s.e.m"
 DisulfiramDLDHSA_fig.subcap = c("Normalized viability values for all experiments.", 

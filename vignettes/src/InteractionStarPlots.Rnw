@@ -19,16 +19,16 @@ represent the features.
 
 <<figureLabels, cache=TRUE, echo=FALSE>>=
 pi1_fig.cap = c("Interaction profiles")
-pi1_fig.subcap = c("Interaction profile of Bendamustine. This figure is the basis for Figure 4 (a) in the paper.",
-                   "Interaction profile of Disulfiram. This figure is the basis for Figure 4 (c) in the paper.", 
-                   "Interaction profile of Colchicine in the parental cell line and the CTNNB1 WT background. This figure is the basis for Figure 2 (b) in the paper.", 
-                   "Interaction profile of BIX01294 in the parental cell line and the CTNNB1 WT background. This figure is the basis for Figure 2 (b) in the paper.")
+pi1_fig.subcap = c("Interaction profile of Bendamustine. This figure is the basis for Figure 4A in the paper.",
+                   "Interaction profile of Disulfiram. This figure is the basis for Figure 4C in the paper.", 
+                   "Interaction profile of Colchicine in the parental cell line and the CTNNB1 WT background. This figure is the basis for Figure 2B in the paper.", 
+                   "Interaction profile of BIX01294 in the parental cell line and the CTNNB1 WT background. This figure is the basis for Figure 2B in the paper.")
 
 pi2_fig.cap=c("Interaction profiles")
-pi2_fig.subcap=c("Interaction profile of Bendamustine. This figure is the basis for Supplementary Figure 10 (a) in the paper.",
-                 "Interaction profile of Disulfiram. This figure is the basis for Supplementary Figure 10 (b) in the paper.",
-                 "Interaction profile of Colchicine in the parental cell line and the CTNNB1 WT background. This figure is the basis for Supplementary Figure 5 in the paper.",
-                 "Interaction profile of BIX01294 in the parental cell line and the CTNNB1 WT background. This figure is the basis for Supplementary Figure 5 in the paper.")
+pi2_fig.subcap=c("Interaction profile of Bendamustine. This figure is the basis for Appendix Figure S7A in the paper.",
+                 "Interaction profile of Disulfiram. This figure is the basis for Appendix Figure S7B in the paper.",
+                 "Interaction profile of Colchicine in the parental cell line and the CTNNB1 WT background. This figure is the basis for Appendix Figure S3 in the paper.",
+                 "Interaction profile of BIX01294 in the parental cell line and the CTNNB1 WT background. This figure is the basis for Appendix Figure S3 in the paper.")
 
 ow = '.45\\textwidth'
 @
@@ -194,7 +194,7 @@ for(i in seq_len(nrow(drugPheno))){
 
 
 Here we plot the scaled profiles for all compounds with significant
-interactions. This was provided as Supplementary Figure 6 and the code is not
+interactions. This was provided as Appendix Figure 6 and the code is not
 executed for the generation of this vignette.
 <<plotInteractionsAllScaled_, cache=TRUE, fig.show='hold', eval=FALSE, dependson=c(-1)>>=
 #### plot interactions for 1 drug as radar plot of all celllines
@@ -411,7 +411,7 @@ for(i in seq_len(nrow(drugPheno))){
 
 Here we plot the profiles for all compounds with significant interactions using
 absolute values and color coding the direction of the interactions. This was
-provided as Supplementary Figure 7 and the code is not executed for the generation 
+provided as Appendix Figure 7 and the code is not executed for the generation 
 of this vignette.
 <<plotInteractionsAll_, cache=TRUE, fig.show='hold', eval=FALSE, dependson=c(-1)>>=
 #### plot interactions for 1 drug as radar plot of all celllines

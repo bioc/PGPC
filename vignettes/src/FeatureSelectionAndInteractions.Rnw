@@ -38,7 +38,7 @@ correlation = getCorrelation(datamatrixTransformed)
 correlation = correlation[order(correlation$cor, decreasing=TRUE),]
 @
 
-<<correlation1, fig.cap=c("Correlation of features. This figure is the basis for Figure 1 (b) in the paper."), cache=TRUE, dependson = c(-1), dev.args=list(pointsize=16)>>=
+<<correlation1, fig.cap=c("Correlation of features. This figure is the basis for Figure 1B in the paper."), cache=TRUE, dependson = c(-1), dev.args=list(pointsize=16)>>=
 selection = c("n", "nseg.dna.m.eccentricity.qt.0.01", "nseg.0.m.cx.mean")
 
 plot(1:nrow(correlation),
@@ -159,7 +159,7 @@ barplot(correlation,
                      brewer.pal(3,"Pastel1")[2], brewer.pal(3,"Pastel1")[1]),
         ylab = "information gain")
 
-<<featureSelection2_, fig.cap=c("Fraction of positive correlations. This figure is the basis for Figure 1 (c) and Supplementary Figure 3 (a) in the paper."), cache=TRUE, fig.width=6.3, fig.height=4.2, dev.args=list(pointsize=8), dependson = c(-1)>>=
+<<featureSelection2_, fig.cap=c("Fraction of positive correlations. This figure is the basis for Figure 1C and Appendix Figure S2A in the paper."), cache=TRUE, fig.width=6.3, fig.height=4.2, dev.args=list(pointsize=8), dependson = c(-1)>>=
 par(mfrow=c(2,1))
 barplot(ratioPositive-0.5, 
         names.arg=PGPC:::hrNames(selectedFtrs), 

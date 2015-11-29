@@ -10,11 +10,11 @@ if(!file.exists(file.path("result")))
 <<figureLabelsCellLineClustering, cache=TRUE, echo=FALSE>>=
 clRaw_fig.cap = paste("Clustering of cell lines based on the raw values of the",
                       "selected features. This figure is the basis for",
-                      "Supplementary Figure 8 (a) in the paper.")
+                      "Appendix Figure S5B in the paper.")
 
 clInt_fig.cap = paste("Clustering of cell lines based on the interaction",
                       "profiles of the selected features. This figure is the",
-                      "basis for Supplementary Figure 8 (b) in the paper.")
+                      "basis for Appendix Figure S5C in the paper.")
 @
 
 

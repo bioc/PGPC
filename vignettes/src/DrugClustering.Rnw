@@ -137,7 +137,7 @@ Due to the ambiguity of the cluster tree and for visualization purposes we
 rearange two clusters.
 Clusters are colored by cutting the cluster tree at a height of 0.6. For 
 visability we only color clusters that contain at least 3 drugs.
-<<clusterHeatmapReordered, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of interaction profiles for drugs that show at least one interaction. Clusters of size larger than 2 are colored. The dendrogram and coloring of clusters in this figure are the basis for Figure 5 (a) and Supplementary Figure 12 in the paper.">>=
+<<clusterHeatmapReordered, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of interaction profiles for drugs that show at least one interaction. Clusters of size larger than 2 are colored. The dendrogram and coloring of clusters in this figure are the basis for Figure 5A and Appendix Figure S8 in the paper.">>=
 
 ## reorder dendrogram
 wts = rep(0, dim(PIdist)[1])
@@ -279,7 +279,7 @@ heat map which is ordered by interaction profile similarity.
 
 A list of identified clusters is plotted seperately in the folder 
 result/Figures/ in the working directory.
-<<chemicalSimilarityCombined, results='hide', cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug interaction profiles combined with chemical similarity defined by Tanimoto distance. This figure is the basis of Figure 5 (a) in the paper.">>=
+<<chemicalSimilarityCombined, results='hide', cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug interaction profiles combined with chemical similarity defined by Tanimoto distance. This figure is the basis of Figure 5A in the paper.">>=
 ## plot combined cluster heatmap
 chemDistOrdered = distmat[order.dendrogram(rev(hcInt)), order.dendrogram(hcInt)]
 
@@ -355,7 +355,7 @@ for(clName in names(cluster)){
 \subsection{Clustering of interaction profiles using the filtered data of a single parental cell line}
 To estimate the information obtained from a high-content screen in a single 
 cell line, we looked at drug similarities, using just one parental cell line.
-<<clusterHeatmapSingleCellLine, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1),  fig.cap="Clustering of drug interaction profiles using data from just one parental cell line. This figure is the basis of Supplementary Figure 13 in the paper.">>=
+<<clusterHeatmapSingleCellLine, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1),  fig.cap="Clustering of drug interaction profiles using data from just one parental cell line. This figure is the basis of Appendix Figure S10 in the paper.">>=
 ## remove controls
 singleCellLine = PIfilter[, match("HCT116 P2", dimnames(PIfilter)[[2]]),]
 
@@ -389,7 +389,7 @@ To estimate the information obtained from a pharmaco-genetic screen using only
 cellular fitness as a readount, we looked at drug similarities, using just the 
 cell number feature of all cell lines.
 
-<<clusterHeatmapJustCellNumber, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug interaction profiles using just the cell number feature of all cell lines. This figure is the basis of Supplementary Figure 13 in the paper.">>=
+<<clusterHeatmapJustCellNumber, cache=TRUE, fig.width=8, fig.height=8, resize.width="0.8\\textwidth", dev.args=list(pointsize=2.5), dependson = c(-1), fig.cap="Clustering of drug interaction profiles using just the cell number feature of all cell lines. This figure is the basis of Appendix Figure 13 in the paper.">>=
 ## combine controls
 justN = PIfilter[,,match("n", dimnames(PIfilter)[[3]])]
 
@@ -537,24 +537,24 @@ plotDensities <- function(d, anno, ...){
 
 
 <<figureLabelsDrugClustering, cache=TRUE, echo=FALSE>>=
-all_fig.cap = c("Distribution of correlation coefficients of the interaction profiles for the whole data set. Pannel (b) is the basis of Figure 5 (b) in the paper.")
-justN_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using only cell number for all cell lines. Pannel (b) is the basis of Figure 5 (b) in the paper.")
-parOnly_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using all features of only one parental cell line. Pannel (b) is the basis of Figure 5 (b) in the paper.")
+all_fig.cap = c("Distribution of correlation coefficients of the interaction profiles for the whole data set. Pannel (b) is the basis of Figure 5B in the paper.")
+justN_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using only cell number for all cell lines. Pannel (b) is the basis of Figure 5B in the paper.")
+parOnly_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using all features of only one parental cell line. Pannel (b) is the basis of Figure 5B in the paper.")
 fig.subcap = c("Density distribution of correlation coefficients per class",
                    "Cumulative distribution of correlation coefficients per class.", 
                    "Fraction of drugs with shared targets plotted against the correlation coefficients.")
 
 
-allStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles for the whole data set. Pannel (b) is the basis of Supplementary Figure 14 (a) in the paper.")
-justNStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using only cell number for all cell lines. Pannel (b) is the basis of Supplementary Figure 14 (a) in the paper.")
-parOnlyStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using all features of only one parental cell line. Pannel (b) is the basis of Supplementary Figure 14 (a) in the paper.")
+allStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles for the whole data set. Pannel (b) is the basis of Appendix Figure S11A in the paper.")
+justNStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using only cell number for all cell lines. Pannel (b) is the basis of Appendix Figure S11A in the paper.")
+parOnlyStruct_fig.cap = c("Distribution of correlation coefficients of the interaction profiles using all features of only one parental cell line. Pannel (b) is the basis of Appendix Figure S11A in the paper.")
 
 integral_fig.cap = "Comparison of the area under the curve (AUC) of the cummulative distribution function from the different data sets and classes defined by the target selectivity."
-integral_fig.subcap = c("Direct comparison of the AUC for each class and data set.", "Comparison of the differece in AUC between classes for the different data sets. This figure ist the basis for Figure 5 (c) in the paper.")
+integral_fig.subcap = c("Direct comparison of the AUC for each class and data set.", "Comparison of the differece in AUC between classes for the different data sets. This figure ist the basis for Figure 5C in the paper.")
 
 integralStruct_fig.cap = "Comparison of the area under the curve (AUC) of the cummulative distribution function from the different data sets and classes defined by the structural similarity."
 integralStruct_fig.subcap = c("Direct comparison of the AUC for each class and data set.", 
-                        "Comparison of the differece in AUC between classes for the different data sets. This figure ist the basis for Supplementary Figure 14 (b) in the paper.",
+                        "Comparison of the differece in AUC between classes for the different data sets. This figure ist the basis for Appendix Figure S11B in the paper.",
                         "Comparison of the differece in AUC between classes for the different data sets and classes defined by target selectivity or structural similarity.")
 
 ow = '.45\\textwidth'

@@ -18,7 +18,7 @@ The phenoprints for several drugs are shown for the two parental cell lines and
 the CTNNB1 wt, cell line.
 Also the phenoprint for one DMSO control well is shown for all cell lines.
 
-<<plotPhenotypes1, cache=TRUE, fig.height=8, fig.width=8, dev.args=list(pointsize=8), fig.show='hold',fig.cap=c("Phenoprints of the two parental cell lines and the CTNNB1 WT background. This figure is the basis for Figure 1 (e-l), Figure 2 (a) and Supplementary Figure 3 (b) in the paper.")>>=
+<<plotPhenotypes1, cache=TRUE, fig.height=8, fig.width=8, dev.args=list(pointsize=8), fig.show='hold',fig.cap=c("Phenoprints of the two parental cell lines and the CTNNB1 WT background. This figure is the basis for Figure 1E-K, Figure 2A and Appendix Figure S2B in the paper.")>>=
 if(!exists("interactions")) data(interactions, package="PGPC")
 D = interactions$D
 D2 = D
@@ -127,7 +127,7 @@ stars(Dselect,
       draw.segments = FALSE,
       scale=FALSE)
 
-<<plotPhenotypes2, cache=TRUE, fig.height=8, fig.width=8, dev.args=list(pointsize=8), fig.show='hold', fig.cap=c("Phenoprints of the all cell lines for a DMSO control. This figure is the basis for Supplementary Figure 4 in the paper.")>>=
+<<plotPhenotypes2, cache=TRUE, fig.height=8, fig.width=8, dev.args=list(pointsize=8), fig.show='hold', fig.cap=c("Phenoprints of the all cell lines for a DMSO control. This figure is the basis for Expanded View Figure EV2 in the paper.")>>=
 ## neg controls for all cell lines
 drugPositions <- match("neg ctr DMSO", dimnames(D)$template)
 

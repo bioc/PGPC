@@ -14,7 +14,7 @@ prot_fig.cap = "Viability and proteasome activity normalized values for the diff
 prot_fig.subcap = c("Untransformed values.", "log10 transformed values.")
 
 sum_fig.cap = "Summary of viability and proteasome activity normalized values for the different drugs and assays. CellTiterGlo (CTG), chymotrypsin-like (CT-L), trypsin-like (T-L), and caspase-like (C-L) activity assay. Error bars, means +- s.e.m."
-sum_fig.subcap = c("Untransformed values. This figure is the basis of Figure 6 (b) in the paper.
+sum_fig.subcap = c("Untransformed values. This figure is the basis of Figure 6B in the paper.
 ", "log10 transformed values.")
 
 fw = 10
