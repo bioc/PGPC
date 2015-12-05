@@ -32,7 +32,22 @@ except the initial image analysis. For the inital image analysis approximately
 3 TB of image data were processed. We provide the analysis of one single well to
 show the steps used in the initial image analysis.
 
-\subsection{Accessing the data}
+\subsection{Data avalability}
+
+Complementary views on this dataset are available through different
+repositories. The image data files are available from the BioStudies database at
+the European Bioinformatics Institute (EMBL-EBI) under the accession
+\href{http://wwwdev.ebi.ac.uk/biostudies/studies/S-BSMS-PGPC1}{S-BSMS-PGPC1}.
+An interactive front-end for exploration of the images is 
+provided by the IDR database
+(\href{http://dx.doi.org/10.17867/10000101}{http://dx.doi.org/10.17867/10000101}).
+
+The authors are hosting an interactive webpage to browse images and interaction
+profiles at \href{http://dedomena.embl.de/PGPC}{http://dedomena.embl.de/PGPC}.
+
+The bulk data can also be provided on hard disk drives upon request.
+
+\subsection{Accessing the data contained in the \Rpackage{PGPC} package}
 
 The final data object can be loaded by 
 <<load, eval=FALSE>>=

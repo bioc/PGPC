@@ -7,7 +7,7 @@
 \usepackage[utf8]{inputenc} 
 
 \usepackage{calc}
-%\usepackage{subfig} use subcaption instead, no problems with line breaks
+
 \usepackage{subcaption}
 \newcommand{\subfloat}[2][need a sub-caption]{\subcaptionbox{#1}{#2}}
 
