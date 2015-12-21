@@ -214,14 +214,14 @@ findNames <- match(controls$GeneID, drugs$GeneID)
 drugs$Name[findNames[!is.na(findNames)]] <- controls$Name[!is.na(findNames)]
 
 ## get drug names in sdf file and adjust format
-drugsInSDF <- datablocktag(sdfset, 5)
+drugsInSDF <- sapply(SDFset2SDF(sdfset), datablocktag, 5)
 drugsInSDF[grep(" $", drugsInSDF)] <- 
     gsub(" *$","", drugsInSDF[grep(" $", drugsInSDF)])
 
 ## keep only selected drugs and add selected controls twice to sdf file
 ctrlToKeep = c("ctrl Paclitaxel", "ctrl U0126", "ctrl Vinblastin")
 selectedControls <- match(controls$Name[match(ctrlToKeep, controls$GeneID)], 
-                          datablocktag(sdfset, 5))
+                          sapply(SDFset2SDF(sdfset), datablocktag, 5))
 sdfsetControls <- sdfset[selectedControls]
 cid(sdfsetControls) <- ctrlToKeep
 
@@ -434,9 +434,9 @@ cmp.similarity(apset["CMP1018"], apset["CMP183"])
 cmp.similarity(apset["CMP1018"], apset["CMP1048"])
 cmp.similarity(apset["CMP183"], apset["CMP1048"])
 
-plot(sdfset[1018], print=FALSE)
-plot(sdfset[183], print=FALSE)
-plot(sdfset[1048], print=FALSE)
+#plot(sdfset[1018], print=FALSE)
+#plot(sdfset[183], print=FALSE)
+#plot(sdfset[1048], print=FALSE)
 #plot(sdfset[c("1018","183", "1048", "943")], print=FALSE)
 # ouabain is CMP943?
 #79229

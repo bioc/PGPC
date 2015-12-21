@@ -166,7 +166,7 @@ for(i in seq_len(nrow(drugPheno))){
   starplot <- ggplot(featureDf) + 
     facet_wrap(~line, ncol=3) +
     geom_bar(aes(feature, maxInt*1.2),
-             fill=backgroundColors,
+             fill=rep(backgroundColors,nrow(featureDf)/length(backgroundColors)),
              stat="identity",
              width = 1)  + 
     geom_bar(aes(feature, maxInt),
@@ -265,7 +265,7 @@ allplots <- lapply(unique(featureDf$GeneID[order(featureDf$Name)]),
   starplot <- ggplot(subset) + 
     facet_grid(GeneID ~ line) +
     geom_bar(aes(feature, maxInt*1.2),
-             fill=backgroundColors,
+             fill=rep(backgroundColors,nrow(featureDf)/length(backgroundColors)),
              stat="identity",
              width = 1)  + 
     geom_bar(aes(feature, maxInt),
@@ -388,7 +388,7 @@ for(i in seq_len(nrow(drugPheno))){
   starplot <- ggplot(featureDf, aes(fill=direction)) + 
     facet_wrap(~line, ncol=3) +
     geom_bar(aes(feature, maxInt*1.2),
-             fill=backgroundColors,
+             fill=rep(backgroundColors,nrow(featureDf)/length(backgroundColors)),
              stat="identity",
              width = 1)  + 
     geom_bar(aes(feature, maxInt),
@@ -499,7 +499,7 @@ allplots <- lapply(unique(featureDf$GeneID[order(featureDf$Name)]),
   starplot <- ggplot(subset, aes(fill=direction)) + 
     facet_grid(GeneID ~ line) +
     geom_bar(aes(feature, maxInt*1.2),
-             fill=backgroundColors,
+             fill=rep(backgroundColors,nrow(featureDf)/length(backgroundColors)),
              stat="identity",
              width = 1)  + 
     geom_bar(aes(feature, maxInt),
