@@ -1,0 +1,12 @@
+drug combi follow up in colon cancer cell lines:
+
+day0:
+seed out 750cells/well HCT
+seed out 2000cells/well HT55
+seed out 1500cells/well DLD1
+45µl/well
+day1: add drugs via Biomek 5µl/well (i.e. 1:10 dilution)
+day2:-
+day3:-
+day4:readout via CTG assay or
+day5: readout via CTG assay
