@@ -1,0 +1,3 @@
+extractfeatures.method: getFeaturesAllSpots
+knn: 10, 15, 20
+edge.correction: square

@@ -1,0 +1,23 @@
+seg.method: segmentAllSpots
+
+scale.nuc: 48
+scale.cyt: 24
+
+thresh.nuc.peak: 0.0007
+thresh.nuc.mask: 0.00025
+thresh.cyt: 0.0001
+thresh.cyt.global: 0.005
+
+nuc.area.min: 100
+nuc.area.max: 3000
+cyt.area.max: 15000
+
+border.crop: 150
+
+thumbnail.crop: 724, 1324, 724, 1324
+thumbnail.resize.width: 400
+
+seg.write.cal: TRUE
+seg.write.cal.view: TRUE
+seg.write.seg: TRUE
+seg.write.contours: TRUE
