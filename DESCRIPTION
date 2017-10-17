@@ -4,7 +4,7 @@ Title: Experimental data and analysis of the chemical-genetic
         interaction screen in isogenic HCT116 cell lines
 Version: 1.5.0
 Author: Felix Klein
-Maintainer: Felix Klein <felix.klein@embl.de>
+Maintainer: Felix Klein <daggoth@gmx.de>
 Description: This package contains the experimental data and a vignette
         guiding through the analysis of a chemical-genenetic
         interaction screen in isogenic HCT116 cell lines. The code can
