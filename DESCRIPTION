@@ -2,7 +2,7 @@ Package: PGPC
 Type: Package
 Title: Experimental data and analysis of the chemical-genetic
         interaction screen in isogenic HCT116 cell lines
-Version: 1.7.0
+Version: 1.8.0
 Author: Felix Klein
 Maintainer: Felix Klein <daggoth@gmx.de>
 Description: This package contains the experimental data and a vignette
